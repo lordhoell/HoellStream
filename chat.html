@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HoellStream - Chat</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { margin:0; padding:0; background:#000; color:#fff; font-family:sans-serif; }
+    .chat-feed { height:100vh; overflow-y:auto; padding:10px; box-sizing:border-box; font-size:25px; }
+    .chat-line { display:flex; align-items:center; margin-bottom:16px; }
+    .platform-icon, .avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; }
+    .platform-icon { margin-right:8px; }
+    .avatar { margin-right:10px; }
+    .username { font-weight:bold; color:#c47cff; margin-right:8px; }
+    .message { flex:1; color:#fff; word-break:break-word; }
+    .gift-icon, .emote { vertical-align:middle; margin:0 2px; max-height:28px; }
+    #ytToggleBtn,
+    #ytStopBtn {
+      font-family: 'Press Start 2P';
+      font-size: 0.75em;
+      color: #B266FF;
+      background: transparent;
+      border: 1px solid #B266FF;
+      border-radius: 4px;
+      padding: 0.3em;
+      margin: 0.1em;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+ #ytToggleBtn { position: absolute; top: 10px; right: 10px; }
+ #ytStopBtn   { position: absolute; top: 40px; right: 10px; }
+  </style>
+</head>
+<body>
+  <div id="chatFeed" class="chat-feed"></div>
+<button id="ytToggleBtn">
+  Start YouTube
+</button>
+<button id="ytStopBtn">
+  Stop YouTube
+</button>
+  <script>
+(async () => {
+  const C = await window.electron.ipcRenderer.invoke('load-config');
+
+    console.log('▶ Unified Chat script loaded', C);
+    const feed = document.getElementById('chatFeed');
+    const icons = {
+      tiktok: 'https://www.tiktok.com/favicon.ico',
+      twitch: 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png',
+      youtube: 'https://www.youtube.com/favicon.ico'
+    };
+
+    function addLine(platform, avatar, name, html) {
+      console.log(`Add line [${platform}]`, name, html);
+      const line = document.createElement('div');
+      line.className = 'chat-line';
+      line.innerHTML = `
+        <img class="platform-icon" src="${icons[platform]}" alt="${platform}">
+        <img class="avatar" src="${avatar}" alt="avatar">
+        <span class="username">${name}:</span>
+        <span class="message">${html}</span>`;
+      feed.appendChild(line);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    // TikTok WS (handle chat events)
+    try {
+      const tkWs = new WebSocket('ws://localhost:21213/');
+      let tF=0, tD=0, tS=0;
+      tkWs.onopen = () => console.log('TikTok WS open');
+      tkWs.onerror = err => console.error('TikTok WS error', err);
+      tkWs.onmessage = e => {
+const m = JSON.parse(e.data);
+const d = m.data || {};
+let html;
+let displayName = d.nickname || d.uniqueId || 'Unknown';
+        switch(m.event) {
+case 'chat': {
+  // build text + emote icons
+  const parts = [];
+  if (d.comment) parts.push(d.comment);
+  if (d.emotes && d.emotes.length) {
+    d.emotes.forEach(e =>
+      parts.push(`<img class="emote" src="${e.emoteImageUrl}" alt="${e.emoteId}">`)
+    );
+  }
+  html = parts.join(' ');
+  break;
+}
+          case 'follow':
+            tF++;
+            html = 'FOLLOWED';
+            break;
+          case 'subscriber':
+          case 'subscription':
+            tS++;
+            html = 'SUBSCRIBED';
+            break;
+          case 'gift':
+            console.log('▶ TikTok gift payload:', d);
+            // only render once at end of repeated gifts
+            if (d.giftType === 1 && !d.repeatEnd) return;
+            const iconUrl = d.giftPictureUrl || d.giftImageUrl || '';
+            const iconHtml = iconUrl ? `<img class=\"gift-icon\" src=\"${iconUrl}\" alt=\"gift\"> ` : '';
+            const count = d.repeatCount || 1;
+            const coins = d.diamondCount || 0;
+            html = `${iconHtml}${count}× ${d.giftName} (${coins} coins)`;
+            break;
+          default:
+            return;
+        }
+        addLine('tiktok', d.profilePictureUrl || icons.tiktok, displayName, html);
+      };
+    } catch(err) {
+      console.warn('TikTok init failed', err);
+    }
+
+    // Twitch IRC with Emote Parsing
+    (function(){
+      if(!C.TWITCH_OAUTH || !C.TWITCH_CHANNEL) return console.error('Missing Twitch creds');
+      console.log('Connecting Twitch IRC');
+      const cache = {};
+      function parseTags(line) {
+        if(!line.startsWith('@')) return {};
+        return line.split(' ')[0].slice(1).split(';').reduce((acc,p) => {
+          const [k,v] = p.split('='); acc[k] = v; return acc;
+        }, {});
+      }
+      function applyEmotes(msg, tags) {
+        if(!tags.emotes) return msg;
+        let res = msg;
+        const insertions = [];
+        tags.emotes.split('/').forEach(chunk => {
+          const [id, ranges] = chunk.split(':');
+          ranges.split(',').forEach(range => {
+            const [s,e] = range.split('-').map(Number);
+            insertions.push({ start:s, end:e, id });
+          });
+        });
+        insertions.sort((a,b) => b.start - a.start);
+        insertions.forEach(({start,end,id}) => {
+          const text = res.substring(start, end+1);
+          const img = `<img class=\"emote\" src=\"https://static-cdn.jtvnw.net/emoticons/v1/${id}/3.0\" alt=\"${text}\">`;
+          res = res.substring(0,start) + img + res.substring(end+1);
+        });
+        return res;
+      }
+      function getAvatar(user) {
+        if(cache[user]) return Promise.resolve(cache[user]);
+        return fetch(`https://api.twitch.tv/helix/users?login=${user}`, {
+          headers:{ 'Client-ID':C.TWITCH_CLIENT_ID, 'Authorization':`Bearer ${C.TWITCH_APP_TOKEN}` }
+        }).then(r=>r.json()).then(j=>{
+          const url = j.data?.[0]?.profile_image_url || icons.twitch;
+          cache[user] = url; return url;
+        }).catch(()=>icons.twitch);
+      }
+      const tw = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+tw.onopen = () => {
+  console.log('Twitch IRC open');
+  // use the token exactly as given (it already has "oauth:")
+  tw.send(`PASS ${C.TWITCH_OAUTH}\r\n`);
+  tw.send(`NICK ${C.TWITCH_CHANNEL}\r\n`);
+  // now request tags/commands/membership
+  tw.send('CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership\r\n');
+  tw.send(`JOIN #${C.TWITCH_CHANNEL}\r\n`);
+};
+
+      tw.onerror = err => console.error('Twitch IRC error', err);
+      tw.onmessage = e => {
+        e.data.split('\r\n').forEach(line => {
+          if(!line) return;
+          if(line.startsWith('PING')){ tw.send('PONG :tmi.twitch.tv\r\n'); return; }
+          const tags = parseTags(line);
+          if(line.includes('PRIVMSG #'+C.TWITCH_CHANNEL)){
+            const msg = line.split('PRIVMSG')[1].split(':').slice(1).join(':');
+            const user = line.match(/:(\w+)!/)[1];
+            const parsed = applyEmotes(msg, tags);
+            getAvatar(user).then(av => addLine('twitch', av, user, parsed));
+          }
+        });
+      };
+    })();
+
+// YouTube polling only after clicking the button
+const ytBtn = document.getElementById('ytToggleBtn');
+let ytInterval = null;
+ytBtn.addEventListener('click', async () => {
+  if (ytInterval) return; // already polling
+  if (!C.YT_API_KEY || !C.YT_STREAM_ID) return console.error('Missing YouTube creds');
+  let chatId = '';
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${C.YT_STREAM_ID}&key=${C.YT_API_KEY}`
+    );
+    const json = await response.json();
+    chatId = json.items?.[0]?.liveStreamingDetails?.activeLiveChatId;
+  } catch (e) {
+    console.error('YT details error', e);
+    return;
+  }
+  const seen = new Set();
+  let nextToken = '';
+  async function ytPoll() {
+    try {
+      let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?part=authorDetails,snippet&liveChatId=${chatId}&key=${C.YT_API_KEY}`;
+      if (nextToken) url += `&pageToken=${nextToken}`;
+      const res = await fetch(url);
+      const d = await res.json();
+      nextToken = d.nextPageToken;
+      for (const m of d.items || []) {
+        if (seen.has(m.id)) continue;
+        seen.add(m.id);
+        const { authorDetails: ad, snippet: sn } = m;
+        const msg = sn.displayMessage || sn.textMessageDetails?.messageText;
+        addLine('youtube', ad.profileImageUrl, ad.displayName, msg);
+        if (sn.superChatDetails) {
+          addLine('youtube', ad.profileImageUrl, ad.displayName,
+                  `SUPERCHAT: ${sn.superChatDetails.amountDisplayString}`);
+        }
+        if (sn.viewerEngagementMessageDetails?.type === 'membership') {
+          addLine('youtube', ad.profileImageUrl, ad.displayName, 'NEW MEMBER');
+        }
+      }
+    } catch (e) {
+      console.error('YT poll error', e);
+    }
+  }
+  ytPoll();
+  ytInterval = setInterval(ytPoll, 10000);
+});
+document.getElementById('ytStopBtn').addEventListener('click', () => {
+  if (!ytInterval) return;
+  clearInterval(ytInterval);
+  ytInterval = null;
+  console.log('Chat YT polling stopped');
+});
+
+
+  })();
+  </script>
+</body>
+</html>

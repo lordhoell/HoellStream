@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Settings</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #111;
+      color: #eee;
+    }
+    .field {
+      margin-top: 15px;
+    }
+    label {
+      font-weight: bold;
+    }
+    .tooltip-container {
+      display: inline-block;
+      position: relative;
+      margin-left: 6px;
+      color: #888;
+      cursor: help;
+    }
+    .tooltip-container .tooltip-text {
+      visibility: hidden;
+      max-width: 300px;
+      background: #333;
+      color: #fff;
+      text-align: left;
+      padding: 8px;
+      border-radius: 4px;
+      position: absolute;
+      z-index: 10;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: normal;
+      word-wrap: break-word;
+    }
+    .tooltip-container:hover .tooltip-text,
+    .tooltip-container:focus .tooltip-text {
+      visibility: visible;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      margin-top: 4px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #8000ff;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Edit Stream Config</h2>
+  <form id="configForm">
+    <!-- 1. YT_STREAM_ID always first -->
+    <div class="field">
+      <label>YouTube Stream ID <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Your live‐stream’s video ID<br>studio.youtube.com/video/VIDEO_ID/livestreaming</div>
+      </span></label>
+      <input type="text" name="YT_STREAM_ID">
+    </div>
+    
+    <!-- Moved to above Twitch Client ID -->
+    
+    <!-- 3. All other manual-entry values below, no duplicates -->
+    <div class="field">
+      <label>YouTube Data API Key <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">YT API Info: <br>https://developers.google.com/youtube/v3/getting-started</div>
+      </span></label>
+      <input type="text" name="YT_API_KEY">
+    </div>
+    
+    <div class="field">
+      <label>YouTube StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Your YouTube JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
+      </span></label>
+      <input type="text" name="YT_SE_JWT">
+    </div>
+    
+    <div class="field">
+      <label>YouTube StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Your YouTube Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
+      </span></label>
+      <input type="text" name="YT_SE_CID">
+    </div>
+    
+    <div class="field">
+      <label>Twitch StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Your Twitch JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
+      </span></label>
+      <input type="text" name="TW_SE_JWT">
+    </div>
+    
+    <div class="field">
+      <label>Twitch StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Your Twitch Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
+      </span></label>
+      <input type="text" name="TW_SE_CID">
+    </div>
+    
+    <!-- Get Extra Twitch Values button and status -->
+    <button type="button" id="twitchLoginBtn" style="margin-bottom:10px;">Get Extra Twitch Values</button>
+    <span id="twitchLoginStatus" style="margin-left:10px;"></span>
+    <br>
+    
+    <div class="field">
+      <label for="twitchClientId">Twitch Client ID <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
+      </span></label>
+      <input type="text" name="TWITCH_CLIENT_ID" id="twitchClientId">
+    </div>
+    
+    <div class="field">
+      <label for="twitchAppToken">Twitch App Access Token <span class="tooltip-container" tabindex="0">❔
+        <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
+      </span></label>
+      <input type="text" name="TWITCH_APP_TOKEN" id="twitchAppToken">
+    </div>
+    
+  </form>
+  
+  <!-- 4. At the very bottom, the two values filled automatically -->
+  <div class="field">
+    <label for="twitchOauth">Twitch OAuth Token <span title="OAuth token for Twitch chat access. Filled automatically.">?</span></label>
+    <input type="text" name="TWITCH_OAUTH">
+  </div>
+  
+  <div class="field">
+    <label for="twitchChannel">Twitch Channel <span title="Twitch channel name. Filled automatically.">?</span></label>
+    <input type="text" name="TWITCH_CHANNEL">
+  </div>
+  
+  <button type="button" id="saveConfigBtn" style="margin-top:20px;">Save Config</button>
+
+  <script>
+    async function loadConfig() {
+      const config = await window.electron.ipcRenderer.invoke('load-config');
+      for (const key in config) {
+        const input = document.querySelector(`[name="${key}"]`);
+        if (input) input.value = config[key];
+      }
+    }
+
+    document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+      const form = document.getElementById('configForm');
+      const data = {};
+      new FormData(form).forEach((val, key) => data[key] = val);
+      
+      // Also include the auto-filled Twitch values
+      const twitchOauth = document.querySelector('[name="TWITCH_OAUTH"]').value;
+      const twitchChannel = document.querySelector('[name="TWITCH_CHANNEL"]').value;
+      if (twitchOauth) data.TWITCH_OAUTH = twitchOauth;
+      if (twitchChannel) data.TWITCH_CHANNEL = twitchChannel;
+      
+      await window.electron.ipcRenderer.invoke('save-config', data);
+      alert('Config saved!');
+    });
+
+    loadConfig();
+
+    // --- Twitch Login Integration ---
+    document.getElementById('twitchLoginBtn').addEventListener('click', async () => {
+      const status = document.getElementById('twitchLoginStatus');
+      status.textContent = '';
+      // Read values from the form
+      const clientId = document.querySelector('[name="TWITCH_CLIENT_ID"]').value.trim();
+      const clientSecret = document.querySelector('[name="TWITCH_APP_TOKEN"]').value.trim();
+      if (!clientId || !clientSecret) {
+        status.textContent = 'Error: Please enter both Twitch Client ID and App Access Token (Secret) first.';
+        return;
+      }
+      status.textContent = 'Opening Twitch login...';
+      const result = await window.electron.ipcRenderer.invoke('twitch-login', { clientId, clientSecret });
+      if (result && result.success) {
+        document.querySelector('[name="TWITCH_OAUTH"]').value = result.oauth;
+        document.querySelector('[name="TWITCH_CHANNEL"]').value = result.channel;
+        // Immediately save config
+        const form = document.getElementById('configForm');
+        const data = {};
+        new FormData(form).forEach((val, key) => data[key] = val);
+        await window.electron.ipcRenderer.invoke('save-config', data);
+        status.textContent = 'Twitch login successful! (Values saved)';
+      } else {
+        document.querySelector('[name="TWITCH_OAUTH"]').value = '';
+        document.querySelector('[name="TWITCH_CHANNEL"]').value = '';
+        status.textContent = 'Twitch login failed or cancelled.';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "HoellStream",
+  "version": "0.0.1",
+  "description": "Electron app to show streaming overlay and chat",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.1.0"
+  }
+}
