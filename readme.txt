@@ -11,10 +11,12 @@ Chat: unified chat feed from TikTok, Twitch, and YouTube
 ========================================
 Getting Started
 
+Prerequisites:
+You must have the Tikfinity Desktop app installed. By default, this setting is ON, but ensure the Event API at the bottom is working to ws://localhost:21213/
+You must have a stream elements account linked to Twitch and YouTube
+
 Launch the app
 Double-click the provided HoellStream.exe to open both Overlay and Chat windows
-
-You must have the Tikfinity Desktop app installed. By default, this setting is ON, but ensure the Event API at the bottom is working to ws://localhost:21213/
 
 Edit configuration
 Open the app menu and select "Edit Config"
@@ -22,8 +24,18 @@ A settings window will appear with fields for credentials and IDs
 Hover over each ? icon for instructions on how to obtain that value
 Enter your Twitch and YouTube values, then click "Save Config"
 
+**NOTE**
+Getting values seems tricky, but it's not bad. You really only need to 
+
+Create your twitch app in the dev tools (This gets 4 values; 2 from this, and two from the automatic button)
+Grab your stream elements keys from one single page (4 values)
+Then deal with the YouTube API Key
+You will have to change your YouTube Stream ID each time. Thank you YouTube.
+
 Reload windows
 Use the "Reload" menu item to refresh both Overlay and Chat windows after saving
+***
+
 
 Start YouTube polling
 In both Overlay and Chat windows, click "Start YouTube" to begin YouTube chat and stats polling
