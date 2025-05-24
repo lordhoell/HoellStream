@@ -49,6 +49,7 @@ Stream-to-stream changes
 After initial setup, your credentials remain valid until they expire. For each new stream, you only need to:
 Open "Edit Config" from the menu
 Update the YouTube Stream ID
+Click the button to get the extra Twitch Values to refresh your Twitch token
 Click "Save Config"
 
 ========================================
