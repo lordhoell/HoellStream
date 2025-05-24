@@ -148,12 +148,46 @@ case 'chat': {
       }
       function getAvatar(user) {
         if(cache[user]) return Promise.resolve(cache[user]);
+        
+        // Make sure we have valid credentials before making the API call
+        if(!C.TWITCH_CLIENT_ID) {
+          console.error('Missing Twitch Client ID');
+          return Promise.resolve(icons.twitch);
+        }
+        
+        // Check for token and log what we have
+        if(!C.TWITCH_OAUTH && !C.TWITCH_APP_TOKEN) {
+          console.error('Missing both TWITCH_OAUTH and TWITCH_APP_TOKEN');
+          return Promise.resolve(icons.twitch);
+        }
+        
+        // Prefer TWITCH_OAUTH over TWITCH_APP_TOKEN if available
+        let token = C.TWITCH_OAUTH || C.TWITCH_APP_TOKEN;
+        
+        // Clean the token - remove oauth: prefix if present
+        token = token.replace(/^oauth:/, '');
+        
+        console.log(`Fetching avatar for ${user} with token starting with: ${token.substring(0, 5)}...`);
+        
         return fetch(`https://api.twitch.tv/helix/users?login=${user}`, {
-          headers:{ 'Client-ID':C.TWITCH_CLIENT_ID, 'Authorization':`Bearer ${C.TWITCH_APP_TOKEN}` }
-        }).then(r=>r.json()).then(j=>{
+          headers: { 
+            'Client-ID': C.TWITCH_CLIENT_ID, 
+            'Authorization': `Bearer ${token}` 
+          }
+        }).then(r => {
+          if (!r.ok) {
+            console.error(`Twitch API error: ${r.status} ${r.statusText}`);
+            console.error(`Headers used: Client-ID: ${C.TWITCH_CLIENT_ID.substring(0, 5)}..., Token: ${token.substring(0, 5)}...`);
+            throw new Error(`API request failed with status ${r.status}`);
+          }
+          return r.json();
+        }).then(j => {
           const url = j.data?.[0]?.profile_image_url || icons.twitch;
           cache[user] = url; return url;
-        }).catch(()=>icons.twitch);
+        }).catch(err => {
+          console.error('Error fetching Twitch avatar:', err);
+          return icons.twitch;
+        });
       }
       const tw = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 tw.onopen = () => {

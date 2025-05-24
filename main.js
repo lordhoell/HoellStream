@@ -169,7 +169,7 @@ ipcMain.handle('twitch-login', async (event, { clientId, clientSecret }) => {
   const state = Math.random().toString(36).substring(2, 15);
 
   // Step 1: Open Twitch OAuth URL
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=chat:read+chat:edit+user:read:email&state=${state}`;
+  const authUrl = `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=chat:read+chat:edit+user:read:email+channel:read:subscriptions+channel:read:redemptions+bits:read+channel:moderate+moderation:read+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:goals+channel:read:charity&state=${state}`;
   shell.openExternal(authUrl);
 
   // Step 2: Start temporary HTTP server to catch redirect

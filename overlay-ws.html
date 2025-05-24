@@ -228,15 +228,46 @@ function addItem({avatar,name,html,provider}) {
     async function fetchStats(){
       if(twCid && twToken){
         try {
-          const helix = await fetch(
-            `https://api.twitch.tv/helix/streams?user_login=${CONFIG.TWITCH_CHANNEL}`,
-            {
-              headers: {
-                'Client-ID':     CONFIG.TWITCH_CLIENT_ID,
-                'Authorization': `Bearer ${CONFIG.TWITCH_APP_TOKEN}`
-              }
-            }
-          ).then(r => r.json());
+          // Make sure we have valid credentials before making the API call
+      if(!CONFIG.TWITCH_CLIENT_ID) {
+        console.error('Missing Twitch Client ID');
+        $('#twitchViewers').text('0');
+        throw new Error('Missing Twitch Client ID');
+      }
+      
+      // Check for token and log what we have
+      if(!CONFIG.TWITCH_OAUTH && !CONFIG.TWITCH_APP_TOKEN) {
+        console.error('Missing both TWITCH_OAUTH and TWITCH_APP_TOKEN');
+        $('#twitchViewers').text('0');
+        throw new Error('Missing Twitch token');
+      }
+      
+      // Prefer TWITCH_OAUTH over TWITCH_APP_TOKEN if available
+      let token = CONFIG.TWITCH_OAUTH || CONFIG.TWITCH_APP_TOKEN;
+      
+      // Clean the token - remove oauth: prefix if present
+      token = token.replace(/^oauth:/, '');
+      
+      console.log(`Fetching Twitch stream info with token starting with: ${token.substring(0, 5)}...`);
+      
+      const response = await fetch(
+        `https://api.twitch.tv/helix/streams?user_login=${CONFIG.TWITCH_CHANNEL}`,
+        {
+          headers: {
+            'Client-ID': CONFIG.TWITCH_CLIENT_ID,
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        console.error(`Twitch API error: ${response.status} ${response.statusText}`);
+        console.error(`Headers used: Client-ID: ${CONFIG.TWITCH_CLIENT_ID.substring(0, 5)}..., Token: ${token.substring(0, 5)}...`);
+        $('#twitchViewers').text('API Error');
+        throw new Error(`Twitch API request failed with status ${response.status}`);
+      }
+      
+      const helix = await response.json();
           const viewers = helix.data[0]?.viewer_count || 0;
           $('#twitchViewers').text(viewers);
         } catch(e) {
