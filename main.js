@@ -37,45 +37,128 @@ function saveConfig(data) {
 
 function getWindowState(key, defaults) {
   try {
-    const state = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'window-state.json')));
-    return state[key] || defaults;
-  } catch {
+    const statePath = path.join(app.getPath('userData'), 'window-state.json');
+    if (!fs.existsSync(statePath)) {
+      return defaults;
+    }
+    const stateContent = fs.readFileSync(statePath, 'utf8');
+    if (!stateContent || stateContent.trim() === '') {
+      return defaults;
+    }
+    const state = JSON.parse(stateContent);
+    if (!state[key]) {
+      return defaults;
+    }
+    
+    // Ensure all required properties exist
+    const savedState = state[key];
+    return {
+      width: savedState.width || defaults.width,
+      height: savedState.height || defaults.height,
+      x: typeof savedState.x === 'number' ? savedState.x : defaults.x,
+      y: typeof savedState.y === 'number' ? savedState.y : defaults.y,
+      zoomLevel: savedState.zoomLevel || defaults.zoomLevel
+    };
+  } catch (error) {
+    console.error(`[getWindowState] Error reading state for ${key}:`, error);
     return defaults;
   }
 }
 
-function saveWindowState(key, bounds) {
-  const statePath = path.join(app.getPath('userData'), 'window-state.json');
-  let state = {};
+function saveWindowState(key, data) {
   try {
-    state = JSON.parse(fs.readFileSync(statePath));
-  } catch {}
-  state[key] = bounds;
-  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+    const statePath = path.join(app.getPath('userData'), 'window-state.json');
+    let state = {};
+    
+    if (fs.existsSync(statePath)) {
+      const content = fs.readFileSync(statePath, 'utf8');
+      if (content && content.trim() !== '') {
+        state = JSON.parse(content);
+      }
+    }
+    
+    // Ensure we're saving valid data
+    const validData = {
+      width: Math.max(100, data.width || 800),
+      height: Math.max(100, data.height || 600),
+      x: typeof data.x === 'number' ? data.x : undefined,
+      y: typeof data.y === 'number' ? data.y : undefined,
+      zoomLevel: data.zoomLevel || 1.0
+    };
+    
+    state[key] = validData;
+    fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+    console.log(`[saveWindowState] Saved state for ${key}:`, validData);
+  } catch (error) {
+    console.error(`[saveWindowState] Error saving state for ${key}:`, error);
+  }
 }
 
 function createWindow(file, options = {}) {
   const key = file.replace(/\..*$/, ''); // 'overlay-ws' or 'chat'
-  const defaults = { width: 800, height: 600 };
+  const defaults = { 
+    width: 800, 
+    height: 600, 
+    x: undefined, 
+    y: undefined,
+    zoomLevel: 1.0
+  };
   const saved = getWindowState(key, defaults);
-  const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+  
+  console.log(`[createWindow] Creating ${key} with state:`, saved);
+  
+  // Create window with saved dimensions and position
+  const windowOptions = {
+    width: saved.width,
+    height: saved.height,
     icon: path.join(__dirname, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      zoomFactor: saved.zoomLevel || 1.0
     },
     ...options,
+  };
+  
+  // Only set position if we have valid coordinates
+  if (typeof saved.x === 'number' && typeof saved.y === 'number') {
+    windowOptions.x = saved.x;
+    windowOptions.y = saved.y;
+  }
+  
+  const win = new BrowserWindow(windowOptions);
+  
+  // Save window state when it changes
+  win.on('resize', () => {
+    const bounds = win.getBounds();
+    const zoomLevel = win.webContents.getZoomFactor();
+    saveWindowState(key, { ...bounds, zoomLevel });
   });
   
+  win.on('move', () => {
+    const bounds = win.getBounds();
+    const zoomLevel = win.webContents.getZoomFactor();
+    saveWindowState(key, { ...bounds, zoomLevel });
+  });
+  
+  // Save zoom level when it changes
+  win.webContents.on('zoom-changed', (event, zoomDirection) => {
+    const zoomLevel = win.webContents.getZoomFactor();
+    const bounds = win.getBounds();
+    saveWindowState(key, { ...bounds, zoomLevel });
+  });
 
-  win.on('resize', () => saveWindowState(key, win.getBounds()));
-  win.on('move', () => saveWindowState(key, win.getBounds()));
-
-  console.log('[createWindow]', file);
+  console.log('[createWindow]', file, 'with state:', saved);
   win.loadFile(file);
+  
+  // Set the zoom level after the page has loaded
+  win.webContents.on('did-finish-load', () => {
+    if (saved.zoomLevel) {
+      win.webContents.setZoomFactor(saved.zoomLevel);
+    }
+  });
+  
   return win;
 }
 
@@ -87,22 +170,75 @@ function createSettingsWindow() {
     return;
   }
 
+  const key = 'settings';
+  const defaults = { 
+    width: 500, 
+    height: 600, 
+    x: undefined, 
+    y: undefined,
+    zoomLevel: 1.0
+  };
+  const saved = getWindowState(key, defaults);
+
   settingsWin = new BrowserWindow({
-    width: 500,
-    height: 600,
+    width: saved.width,
+    height: saved.height,
+    x: saved.x,
+    y: saved.y,
     title: 'Edit Config',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      zoomFactor: saved.zoomLevel || 1.0
     }
   });
 
+  // Save window state when it changes
+  settingsWin.on('resize', () => {
+    const bounds = settingsWin.getBounds();
+    const zoomLevel = settingsWin.webContents.getZoomFactor();
+    saveWindowState(key, { ...bounds, zoomLevel });
+  });
+  
+  settingsWin.on('move', () => {
+    const bounds = settingsWin.getBounds();
+    const zoomLevel = settingsWin.webContents.getZoomFactor();
+    saveWindowState(key, { ...bounds, zoomLevel });
+  });
+  
+  // Save zoom level when it changes
+  settingsWin.webContents.on('zoom-changed', (event, zoomDirection) => {
+    const zoomLevel = settingsWin.webContents.getZoomFactor();
+    const bounds = settingsWin.getBounds();
+    saveWindowState(key, { ...bounds, zoomLevel });
+  });
+
   settingsWin.loadFile('settings.html');
+  
+  // Set the zoom level after the page has loaded
+  settingsWin.webContents.on('did-finish-load', () => {
+    if (saved.zoomLevel) {
+      settingsWin.webContents.setZoomFactor(saved.zoomLevel);
+    }
+  });
+  
   settingsWin.on('closed', () => (settingsWin = null));
 }
 
 app.whenReady().then(() => {
+  // Register IPC handlers
+  ipcMain.handle('zoom-changed', (event, zoomFactor) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const key = win.getTitle() === 'Overlay' ? 'overlay-ws' : 'chat';
+      const bounds = win.getBounds();
+      saveWindowState(key, { ...bounds, zoomLevel: zoomFactor });
+      console.log(`[zoom-changed] ${key} zoom level: ${zoomFactor}`);
+    }
+    return true;
+  });
+
   setTimeout(() => {
     overlayWin = createWindow('overlay-ws.html', { title: 'Overlay' });
     chatWin = createWindow('chat.html', { title: 'Chat' });

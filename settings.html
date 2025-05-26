@@ -12,6 +12,7 @@
     }
     .field {
       margin-top: 15px;
+      position: relative;
     }
     label {
       font-weight: bold;
@@ -51,14 +52,42 @@
       border: 1px solid #555;
       margin-top: 4px;
     }
-    button {
+    .masked-input {
+      -webkit-text-security: disc;
+      font-family: text-security-disc;
+    }
+    .toggle-visibility {
+      position: absolute;
+      right: 10px;
+      top: 32px;
+      background: #444;
+      border: none;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0;
+      font-size: 12px;
+    }
+    .toggle-visibility:hover {
+      background: #555;
+    }
+    .button-container {
+      display: flex;
+      gap: 10px;
       margin-top: 20px;
+    }
+    button {
       padding: 10px 20px;
       background: #8000ff;
       color: #fff;
       border: none;
       font-weight: bold;
       cursor: pointer;
+    }
+    @font-face {
+      font-family: 'text-security-disc';
+      src: url('data:font/truetype;charset=utf-8;base64,AAEAAAALAIAAAwAwT1MvMg8SBhgAAAC8AAAAYGNtYXDAS9TMAAABHAAAAGxnYXNwAAAAEAAAAYgAAAAIZ2x5ZrQKC/EAAAGQAAAA2GhlYWQHZNK9AAADaAAAADZoaGVhB3kDyQAAA6AAAAAkaG10eA8RAAAAAACkAAAAFGxvY2EAKACKAAAAsAAAAAxtYXhwAA0AMgAABGwAAAAgbmFtZVcZpu4AAASMAAACRXBvc3QAAwAAAAAG1AAAACAAAwQAAZAABQAAApkCzAAAAI8CmQLMAAAB6wAzAQkAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAABAAADmAAPA/8AAQAPAAEAAAAABAAAAAAAAAAAAAAAgAAAAAAADAAAAAwAAABwAAQADAAAAHAADAAEAAAAcAAQAUAAAABAAEAADAAAAAQAg5gDmAeYD5gT//f//AAAAAAAg5gDmAeYD5gT//f//AAH/4xoEGgMaAhoBAAMBAAAAAAAAAAAAAAAAAAAAAAEAAf//AA8AAQAAAAAAAAAAAAIAADc5AQAAAAABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAABgAA/8AEAAPAABkAIQAzAEUAVwBfAAABIgcOAQcGFRQXHgEXFjMyNz4BNzY1NCcuAScmAyImNTQ2MzIWFRQGASIuAjU0PgIzMh4CFRQOAhMiDgIVFB4CMzI+AjU0LgITIiY1NDYzMhYVFAYBIgYVFBYzMjY1NCYCAGpdXYspKCgpi11dampdXYspKCgpi11dai5FRS4uRUX+7jVdRigoRl01NV1GKChGXTUoRjQeHjRGKChGNB4eNEYoLkVFLi5FRf7uIygoIyMoKAPAKCmLXV1qal1diykoKCmLXV1qal1diyko/MBFLi5FRS4uRQGAKEZdNTVdRigoRl01NV1GKP5AHjRGKChGNB4eNEYoKEY0HgJgRS4uRUUuLkX+YCgjIygoIyMoAAEAAAABAADFzJAXXw889QALBAAAAAAA1Y+JwwAAAADVj4nDAAD/wAQAA8AAAAAIAAIAAAAAAAAAAQAAA8D/wAAABAAAAAAABAAAAQAAAAAAAAAAAAAAAAAAAAUEAAAAAAAAAAAAAAACAAAABAAAAAAAAAAACgAUAB4AuAABAAAABQBgAAYAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAADgCuAAEAAAAAAAEABwAAAAEAAAAAAAIABwBgAAEAAAAAAAMABwA2AAEAAAAAAAQABwB1AAEAAAAAAAUACwAVAAEAAAAAAAYABwBLAAEAAAAAAAoAGgCKAAMAAQQJAAEADgAHAAMAAQQJAAIADgBnAAMAAQQJAAMADgA9AAMAAQQJAAQADgB8AAMAAQQJAAUAFgAgAAMAAQQJAAYADgBSAAMAAQQJAAoANACkaWNvbW9vbgBpAGMAbwBtAG8AbwBuVmVyc2lvbiAxLjAAVgBlAHIAcwBpAG8AbgAgADEALgAwaWNvbW9vbgBpAGMAbwBtAG8AbwBuaWNvbW9vbgBpAGMAbwBtAG8AbwBuUmVndWxhcgBSAGUAZwB1AGwAYQByaWNvbW9vbgBpAGMAbwBtAG8AbwBuRm9udCBnZW5lcmF0ZWQgYnkgSWNvTW9vbi4ARgBvAG4AdAAgAGcAZQBuAGUAcgBhAHQAZQBkACAAYgB5ACAASQBjAG8ATQBvAG8AbgAuAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==') format('truetype');
     }
   </style>
 </head>
@@ -70,7 +99,8 @@
       <label>YouTube Stream ID <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Your live‐stream’s video ID<br>studio.youtube.com/video/VIDEO_ID/livestreaming</div>
       </span></label>
-      <input type="text" name="YT_STREAM_ID">
+      <input type="text" name="YT_STREAM_ID" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <!-- Moved to above Twitch Client ID -->
@@ -80,54 +110,56 @@
       <label>YouTube Data API Key <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">YT API Info: <br>https://developers.google.com/youtube/v3/getting-started</div>
       </span></label>
-      <input type="text" name="YT_API_KEY">
+      <input type="text" name="YT_API_KEY" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <div class="field">
       <label>YouTube StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Your YouTube JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
       </span></label>
-      <input type="text" name="YT_SE_JWT">
+      <input type="text" name="YT_SE_JWT" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <div class="field">
       <label>YouTube StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Your YouTube Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
       </span></label>
-      <input type="text" name="YT_SE_CID">
+      <input type="text" name="YT_SE_CID" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <div class="field">
       <label>Twitch StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Your Twitch JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
       </span></label>
-      <input type="text" name="TW_SE_JWT">
+      <input type="text" name="TW_SE_JWT" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <div class="field">
       <label>Twitch StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Your Twitch Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
       </span></label>
-      <input type="text" name="TW_SE_CID">
+      <input type="text" name="TW_SE_CID" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
-    
-    <!-- Get Extra Twitch Values button and status -->
-    <button type="button" id="twitchLoginBtn" style="margin-bottom:10px;">Get Extra Twitch Values</button>
-    <span id="twitchLoginStatus" style="margin-left:10px;"></span>
-    <br>
     
     <div class="field">
       <label for="twitchClientId">Twitch Client ID <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
       </span></label>
-      <input type="text" name="TWITCH_CLIENT_ID" id="twitchClientId">
+      <input type="text" name="TWITCH_CLIENT_ID" id="twitchClientId" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
     <div class="field">
       <label for="twitchAppToken">Twitch App Access Token <span class="tooltip-container" tabindex="0">❔
         <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
       </span></label>
-      <input type="text" name="TWITCH_APP_TOKEN" id="twitchAppToken">
+      <input type="text" name="TWITCH_APP_TOKEN" id="twitchAppToken" class="masked-input">
+      <button type="button" class="toggle-visibility">Show</button>
     </div>
     
   </form>
@@ -135,15 +167,21 @@
   <!-- 4. At the very bottom, the two values filled automatically -->
   <div class="field">
     <label for="twitchOauth">Twitch OAuth Token <span title="OAuth token for Twitch chat access. Filled automatically.">?</span></label>
-    <input type="text" name="TWITCH_OAUTH">
+    <input type="text" name="TWITCH_OAUTH" class="masked-input">
+    <button type="button" class="toggle-visibility">Show</button>
   </div>
   
   <div class="field">
     <label for="twitchChannel">Twitch Channel <span title="Twitch channel name. Filled automatically.">?</span></label>
-    <input type="text" name="TWITCH_CHANNEL">
+    <input type="text" name="TWITCH_CHANNEL" class="masked-input">
+    <button type="button" class="toggle-visibility">Show</button>
   </div>
   
-  <button type="button" id="saveConfigBtn" style="margin-top:20px;">Save Config</button>
+  <div class="button-container">
+    <button type="button" id="twitchLoginBtn">Get Twitch OAuth</button>
+    <button type="button" id="saveConfigBtn">Save Config</button>
+  </div>
+  <span id="twitchLoginStatus" style="margin-left:10px;"></span>
 
   <script>
     async function loadConfig() {
@@ -170,6 +208,20 @@
     });
 
     loadConfig();
+
+    // Add event listeners for all toggle visibility buttons
+    document.querySelectorAll('.toggle-visibility').forEach(button => {
+      button.addEventListener('click', function() {
+        const input = this.previousElementSibling;
+        if (input.classList.contains('masked-input')) {
+          input.classList.remove('masked-input');
+          this.textContent = 'Hide';
+        } else {
+          input.classList.add('masked-input');
+          this.textContent = 'Show';
+        }
+      });
+    });
 
     // --- Twitch Login Integration ---
     document.getElementById('twitchLoginBtn').addEventListener('click', async () => {

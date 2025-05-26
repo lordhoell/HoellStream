@@ -1,3 +1,6 @@
+HoellStream
+
+========================================
 Unified overlay and chat app for streamers
 
 HoellStream displays TikTok, Twitch, and YouTube chats and stream events in two separate windows:
@@ -5,12 +8,14 @@ HoellStream displays TikTok, Twitch, and YouTube chats and stream events in two 
 Overlay: stream events like follows, subs, bits, superchats, and more
 Chat: unified chat feed from TikTok, Twitch, and YouTube
 
-
+========================================
 
 ![2025-05-23_22h35_34](https://github.com/user-attachments/assets/0de8159a-00b1-4334-b4fd-787c57bdf8ff)
 
 
 ![2025-05-23_22h35_39](https://github.com/user-attachments/assets/55a28d0f-5ced-4877-acf1-3a8c02772ee4)
+
+
 
 
 Getting Started
@@ -49,7 +54,6 @@ Stream-to-stream changes
 After initial setup, your credentials remain valid until they expire. For each new stream, you only need to:
 Open "Edit Config" from the menu
 Update the YouTube Stream ID
-Click the button to get the extra Twitch Values to refresh your Twitch token
 Click "Save Config"
 
 ========================================
