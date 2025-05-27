@@ -1,6 +1,6 @@
 {
   "name": "HoellStream",
-  "version": "0.6.9",
+  "version": "0.7.1",
   "description": "Show all your stream data in on place!",
   "author": "Patrick Hoell",
   "main": "main.js",

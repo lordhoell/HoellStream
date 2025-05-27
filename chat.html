@@ -400,7 +400,9 @@
       if (m.event === 'chat') {
         const d = m.data;
         const avatar = d.profilePictureUrl || icons.tiktok;
-        addChat('tiktok', d.uniqueId, d.comment, avatar);
+        // Use nickname (display name) instead of uniqueId (username)
+        const displayName = d.nickname || d.uniqueId || 'Unknown';
+        addChat('tiktok', displayName, d.comment, avatar);
       }
     };
   } catch (err) {
