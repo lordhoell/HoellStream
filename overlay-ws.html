@@ -101,9 +101,84 @@
       border:1px solid #8000FF; border-radius:4px;
       width:80vw;
     }
-    .item.tiktok-item { background: rgba(127,0,255,0.15); }
-    .item.twitch-item { background: rgba(128,0,255,0.2); }
-    .item.youtube-item { background: rgba(255,0,0,0.15); }
+.item.tiktok-item { background: rgba(127,0,255,0.15); }
+.tiktok-gift-counting { color: #FF2222 !important; font-weight: bold; text-shadow: 0 0 6px #FF2222, 0 0 2px #fff; }
+
+/* Shake and light-up animation for stream events */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+@keyframes boxLight {
+  0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
+  100% { box-shadow: 0 0 0 #8000FF; }
+}
+.item.event-animate {
+  animation: flashPulse 1s cubic-bezier(.36,.07,.19,.97) both;
+  z-index: 2;
+}
+@keyframes flashPulse {
+  0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
+  40% { box-shadow: 0 0 32px 16px #FFD700, 0 0 0 #8000FF; }
+  80% { box-shadow: 0 0 12px 4px #8000FF, 0 0 0 #FFD700; }
+  100% { box-shadow: 0 0 0 #8000FF; }
+}
+
+/* Ensure animations don't affect structure */
+.event-animate {
+  position: relative;
+  z-index: 2;
+}
+
+
+    .item.twitch-item, .item.youtube-item, .item.tiktok-item { background: #000; } /* All events pure black */
+
+/* Provider icon box styling */
+.event-row {
+  display: flex;
+  align-items: stretch;
+  width: 80vw;
+  max-width: 900px;
+  margin: 0.5em auto;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+.provider-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #8000FF;
+  border-radius: 6px 0 0 6px;
+  width: 44px;
+  min-width: 44px;
+  margin-right: 0;
+  margin-left: 0;
+  height: auto;
+  z-index: 3; /* Ensure it's above animations */
+  position: relative; /* Needed for z-index to work */
+}
+.provider-icon-box img {
+  width: 28px;
+  height: 28px;
+  filter: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.5em;
+  border: 1px solid #8000FF;
+  border-radius: 0 4px 4px 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  background: #000;
+  margin: 0;
+  box-sizing: border-box;
+}
     .avatar { width:36px; height:36px; border-radius:50%; margin-right:0.5em; }
     .username { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-right:0.5em; }
     .details { text-align:right; font-size:0.9em; white-space:nowrap; }
@@ -260,20 +335,41 @@
 
 
   function addItem({avatar,name,html,provider}) {
-    const $it = $(`
-      <div class="item ${provider}-item">
-        <img class="avatar" src="${avatar}" alt="">
-        <div class="username">${name}</div>
-        <div class="details">${html}</div>
-      </div>
-    `);
-    $('.feed')
-      .append($it)
-      .each(function() { this.scrollTop = this.scrollHeight; });
+    // Favicons for each provider
+    const favicons = {
+      twitch: 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png',
+      youtube: 'https://www.youtube.com/favicon.ico', // Use ICO directly which is more reliable
+      tiktok: 'https://www.tiktok.com/favicon.ico',
+    };
+    // Simple favicon image function
+    function faviconImg(provider) {
+      return `<img src='${favicons[provider]||favicons.tiktok}' alt='${provider}'>`;
+    }
+    const $it = $(
+      `<div class="event-row">
+        <div class='provider-icon-box'>${faviconImg(provider)}</div>
+        <div class="item ${provider}-item">
+          <img class="avatar" src="${avatar}" alt="">
+          <div class="username">${name}</div>
+          <div class="details">${html}</div>
+        </div>
+      </div>`
+    );
+    const $feed = $('.feed');
+    $feed.append($it);
+    // Always scroll to bottom after adding
+    $feed.each(function() { this.scrollTop = this.scrollHeight; });
 
-    $it.addClass('flashPulse');
+    // Limit to 30 most recent events
+    while ($feed.children('.event-row').length > 30) {
+      $feed.children('.event-row').first().remove();
+    }
+
+    // Animate the new event
+    $it.find('.item').addClass('flashPulse');
+    $it.addClass('event-animate flashPulse');
     setTimeout(() => {
-      $it.removeClass('flashPulse');
+      $it.removeClass('event-animate flashPulse');
     }, 1000);
   }
 
@@ -475,20 +571,60 @@
         }
         tS++; $('#tiktokSubs').text(tS);
       } else if (m.event === 'gift') {
-        // Only process stacked gifts at the end, like chat.html
-        if (d.giftType === 1 && !d.repeatEnd) return;
+        // --- NEW SINGLE-LINE LIVE-UPDATING GIFT STACKING ---
         const key = d.groupId;
-        if (!giftMaxEvents[key] || d.repeatCount > giftMaxEvents[key].repeatCount) giftMaxEvents[key] = d;
-        if (giftTimers[key]) clearTimeout(giftTimers[key]);
-        giftTimers[key] = setTimeout(() => {
-          const gd = giftMaxEvents[key];
-          const count = gd.repeatCount || 1;
-          const totalDiamonds = (gd.diamondCount || 0) * count;
-          tD += totalDiamonds; $('#tiktokDiamonds').text(tD);
-          const icon = gd.giftPictureUrl || gd.giftImageUrl || '';
-          addItem({ avatar: gd.profilePictureUrl, name: gd.uniqueId, html: (icon ? `<img class="icon" src="${icon}">` : '') + `${count}× ${gd.giftName}<br>${totalDiamonds} diamonds`, provider: 'tiktok' });
-          delete giftMaxEvents[key]; delete giftTimers[key];
-        }, 1000);
+        // Find or create the DOM element for this gift stack
+        let $giftLine = $(`.tiktok-gift-line[data-groupid='${key}']`);
+        const count = d.repeatCount || 1;
+        const totalDiamonds = (d.diamondCount || 0) * count;
+        const icon = d.giftPictureUrl || d.giftImageUrl || '';
+        const displayName = d.nickname || d.uniqueId || 'Unknown';
+        const isFinal = d.giftType !== 1 || d.repeatEnd;
+        const colorClass = isFinal ? '' : 'tiktok-gift-counting';
+        // Gift message HTML
+        const giftHtml = `
+          <img class="icon" src="${icon}"> 
+          <span class="gift-count ${colorClass}">${count}× ${d.giftName}<br><span style='font-size:0.7em;color:#FFD700;'>${totalDiamonds} diamonds</span></span>
+        `;
+        if ($giftLine.length) {
+          // Update existing line
+          $giftLine.find('.gift-count').html(`${count}× ${d.giftName}<br><span style='font-size:0.7em;color:#FFD700;'>${totalDiamonds} diamonds</span>`);
+          $giftLine.find('.gift-count').toggleClass('tiktok-gift-counting', !isFinal);
+          if (isFinal) {
+            setTimeout(() => $giftLine.find('.gift-count').removeClass('tiktok-gift-counting'), 100);
+            // Find the parent event-row and animate it
+            const $parentRow = $giftLine.closest('.event-row');
+            if ($parentRow.length) {
+              $parentRow.addClass('event-animate flashPulse');
+              setTimeout(() => $parentRow.removeClass('event-animate flashPulse'), 1000);
+            } else {
+              // Fallback if not in the new structure yet
+              $giftLine.addClass('event-animate flashPulse');
+              setTimeout(() => $giftLine.removeClass('event-animate flashPulse'), 1000);
+            }
+          }
+        } else {
+          // Create new line using the same structure as other events
+          const $line = $(`
+            <div class="event-row">
+              <div class='provider-icon-box'><img src='https://www.tiktok.com/favicon.ico' alt='tiktok'></div>
+              <div class="item tiktok-item tiktok-gift-line" data-groupid="${key}">
+                <img class="avatar" src="${d.profilePictureUrl || icon}">
+                <span class="username">${displayName}</span>
+                <span class="details">${giftHtml}</span>
+              </div>
+            </div>`);
+          
+          $('.feed').append($line);
+          $line.addClass('event-animate flashPulse');
+          setTimeout(() => $line.removeClass('event-animate flashPulse'), 1000);
+        }
+        // On final, optionally scroll to bottom
+        if (isFinal) {
+  tD += totalDiamonds;
+  $('#tiktokDiamonds').text(tD);
+  $('.feed').scrollTop($('.feed')[0].scrollHeight);
+}
       }
     };
   } catch(err) { 
@@ -498,10 +634,148 @@
 
   // StreamElements Astro WS (Twitch & YouTube)
   try {
-    const astro = new WebSocket('wss://astro.streamelements.com');
+    let astro;
+    let astroReconnectTimeout = null;
+    let astroReconnectAttempts = 0;
     let giftQueue = null;
     let twitchSubscribed = false;
     let youtubeSubscribed = false;
+
+    function connectAstroWS() {
+      astro = new WebSocket('wss://astro.streamelements.com');
+      console.log('▶ Attempting to connect to StreamElements Astro WS...');
+
+      astro.onopen = () => {
+        console.log('▶ StreamElements Astro WS connected');
+        astroReconnectAttempts = 0;
+        // Send subscription requests for Twitch and YouTube
+        if (twCid && twToken) {
+          astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:twCid,token:twToken,token_type:'jwt'}}));
+        } else {
+          console.log('▶ Twitch credentials missing, not subscribing to Twitch events');
+        }
+        if (ytCid && ytToken) {
+          astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:ytCid,token:ytToken,token_type:'jwt'}}));
+        } else {
+          console.log('▶ YouTube credentials missing, not subscribing to YouTube events');
+        }
+      };
+
+      astro.onclose = () => {
+        console.log('▶ StreamElements Astro WS closed');
+        if (twitchSubscribed) updateConnectionStatus('twitch', false);
+        if (youtubeSubscribed) updateConnectionStatus('youtube', false);
+        twitchSubscribed = false;
+        youtubeSubscribed = false;
+        scheduleAstroReconnect();
+      };
+
+      astro.onerror = (error) => {
+        console.error('▶ StreamElements Astro WS error:', error);
+        if (twitchSubscribed) updateConnectionStatus('twitch', false);
+        if (youtubeSubscribed) updateConnectionStatus('youtube', false);
+        scheduleAstroReconnect();
+      };
+
+      astro.onmessage = e => {
+        try {
+          const m = JSON.parse(e.data);
+          console.log('▶ Astro raw event:', m);
+          // Check for subscription confirmations
+          if (m.type === 'reply' && m.data?.topic === 'channel.activities') {
+            if (m.data?.room === twCid) {
+              twitchSubscribed = true;
+              updateConnectionStatus('twitch', true);
+              console.log('▶ Twitch events subscription confirmed');
+            } else if (m.data?.room === ytCid) {
+              youtubeSubscribed = true;
+              updateConnectionStatus('youtube', true);
+              console.log('▶ YouTube events subscription confirmed');
+            }
+            return;
+          }
+          if (m.type !== 'message' || m.topic !== 'channel.activities') return;
+          const {provider, type, data:p} = m.data;
+          if (provider === 'twitch') {
+            console.log('▶ [DEBUG] Twitch event:', type, JSON.stringify(p, null, 2));
+            if (type === 'follow') {
+              addItem({avatar:p.avatar, name:p.displayName||p.username, html:'FOLLOWED', provider});
+              $('#twitchFollows').text((+$('#twitchFollows').text()||0)+1);
+            } else if (type === 'channelPointsRedemption' || type === 'redemption') {
+              console.log('▶ [DEBUG] redemption payload:', JSON.stringify(p, null, 2));
+              const user = p.displayName||p.username||p.userName||'Unknown';
+              let rewardTitle = p.redemption?.reward?.title || p.reward?.title || p.reward?.name || p.rewardTitle || p.rewardName || p.title || '';
+              let rewardAmount = p.redemption?.reward?.cost || p.reward?.cost || p.amount || '';
+              let rewardDisplay = rewardTitle;
+              if (rewardAmount && rewardTitle) rewardDisplay += ` (${rewardAmount} points)`;
+              else if (rewardAmount) rewardDisplay = `${rewardAmount} Channel Points`;
+              // Special handling for "Highlight My Message"
+              const userMsg = p.redemption?.user_input || p.user_input || p.message || '';
+              if (rewardTitle && rewardTitle.toLowerCase().includes('highlight my message')) {
+                addItem({avatar:p.avatar, name:user, html:`<span style='color:#FFD700'>HIGHLIGHTED: ${userMsg}</span>`, provider});
+              } else {
+                addItem({avatar:p.avatar, name:user, html:`REDEEMED: ${rewardDisplay}`, provider});
+              }
+            } else if (type === 'hypetrainStart') {
+              addItem({avatar:'', name:'HYPE TRAIN', html:`Level ${p.level} Started`, provider});
+            } else if (type === 'hypetrainProgress') {
+              addItem({avatar:'', name:'HYPE TRAIN', html:`Progress: ${p.progress}/${p.goal}`, provider});
+            } else if (type === 'hypetrainEnd') {
+              addItem({avatar:'', name:'HYPE TRAIN', html:`Ended at Level ${p.level}`, provider});
+            } else if (type === 'communityGiftPurchase') {
+              giftQueue = {gifter:p.displayName||p.username, avatar:p.avatar, remaining:p.amount};
+            } else if (type === 'subscription' || type === 'subscriber') {
+              if (giftQueue && giftQueue.remaining > 0) {
+                const recv = p.displayName||p.username;
+                addItem({avatar:giftQueue.avatar, name:giftQueue.gifter, html:`GIFTED SUB to ${recv}`, provider});
+                giftQueue.remaining--; 
+                if (giftQueue.remaining === 0) giftQueue = null;
+              } else {
+                addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
+              }
+              $('#twitchSubs').text((+$('#twitchSubs').text()||0)+1);
+            } else if (/tip|cheer/.test(type)) {
+              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`${p.bits||p.amount} bits`, provider});
+              $('#twitchBits').text((+$('#twitchBits').text()||0)+(p.bits||p.amount));
+            } else if (type === 'raid') {
+              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`RAID: ${p.amount}`, provider});
+              $('#twitchRaids').text((+$('#twitchRaids').text()||0)+1);
+            }
+          } else if (provider === 'youtube') {
+            console.log('▶ YouTube event:', type, p);
+            if (type === 'subscriber') {
+              addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
+              $('#ytSubscribers').text((+$('#ytSubscribers').text()||0)+1);
+            } else if (type === 'superchat') {
+              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`SUPERCHAT: ${p.amount}`, provider});
+              $('#ytSuperchats').text((+$('#ytSuperchats').text()||0)+1);
+            } else if (type === 'sponsor') {
+              if (p.gifted) {
+                addItem({avatar:p.avatar, name:p.sender, html:`GIFTED MEMBERSHIP to ${p.displayName||p.username}`, provider});
+              } else {
+                addItem({avatar:p.avatar, name:p.displayName||p.username, html:'NEW MEMBER', provider});
+              }
+              $('#ytMembers').text((+$('#ytMembers').text()||0)+1);
+            }
+          }
+        } catch (err) {
+          console.error('Astro WS message handler error:', err);
+        }
+      };
+    }
+
+    function scheduleAstroReconnect() {
+      if (astroReconnectTimeout) return; // Already scheduled
+      astroReconnectAttempts++;
+      const delay = Math.min(astroReconnectAttempts * 3000, 30000); // Exponential backoff up to 30s
+      console.warn(`▶ Astro WS reconnecting in ${delay / 1000}s (attempt ${astroReconnectAttempts})`);
+      astroReconnectTimeout = setTimeout(() => {
+        astroReconnectTimeout = null;
+        connectAstroWS();
+      }, delay);
+    }
+
+    connectAstroWS();
     
     astro.onopen = () => {
       console.log('▶ StreamElements Astro WS connected');
@@ -557,19 +831,27 @@
       const {provider, type, data:p} = m.data;
       
       if (provider === 'twitch') {
-        console.log('▶ Twitch event:', type, p);
+        console.log('▶ [DEBUG] Twitch event:', type, JSON.stringify(p, null, 2));
         if (type === 'follow') {
           addItem({avatar:p.avatar, name:p.displayName||p.username, html:'FOLLOWED', provider});
           $('#twitchFollows').text((+$('#twitchFollows').text()||0)+1);
         } else if (type === 'channelPointsRedemption' || type === 'redemption') {
-          console.log('▶ redemption payload:', p);
+          console.log('▶ [DEBUG] redemption payload:', JSON.stringify(p, null, 2));
           const user = p.displayName||p.username||p.userName||'Unknown';
-          let reward = p.redemption?.reward?.title || p.reward?.title || p.reward?.name || p.rewardTitle || p.rewardName || p.title;
-          if (!reward && p.amount) {
-            reward = `${p.amount} Channel Points`;
+          let rewardTitle = p.redemption?.reward?.title || p.reward?.title || p.reward?.name || p.rewardTitle || p.rewardName || p.title || '';
+          let rewardAmount = p.redemption?.reward?.cost || p.reward?.cost || p.amount || '';
+          let rewardDisplay = rewardTitle;
+          if (rewardAmount && rewardTitle) rewardDisplay += ` (${rewardAmount} points)`;
+          else if (rewardAmount) rewardDisplay = `${rewardAmount} Channel Points`;
+
+          // Special handling for "Highlight My Message"
+          const userMsg = p.redemption?.user_input || p.user_input || p.message || '';
+          if (rewardTitle && rewardTitle.toLowerCase().includes('highlight my message')) {
+            // Show the user's highlighted message
+            addItem({avatar:p.avatar, name:user, html:`<span style='color:#FFD700'>HIGHLIGHTED: ${userMsg}</span>`, provider});
+          } else {
+            addItem({avatar:p.avatar, name:user, html:`REDEEMED: ${rewardDisplay}`, provider});
           }
-          console.log('▶ Channel point redemption:', user, reward);
-          addItem({avatar:p.avatar, name:user, html:`REDEEMED: ${reward}`, provider});
         } else if (type === 'hypetrainStart') {
           addItem({avatar:'', name:'HYPE TRAIN', html:`Level ${p.level} Started`, provider});
         } else if (type === 'hypetrainProgress') {

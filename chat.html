@@ -204,8 +204,10 @@
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     
-    // Process emotes if any
-    if (platform === 'twitch' && emotes[user] && emotes[user][message]) {
+    // Render TikTok gifts as HTML, others as text
+    if (platform === 'tiktok' && /gift-icon/.test(message)) {
+      messageDiv.innerHTML = message;
+    } else if (platform === 'twitch' && emotes[user] && emotes[user][message]) {
       messageDiv.innerHTML = emotes[user][message];
     } else {
       messageDiv.textContent = message;
@@ -400,9 +402,20 @@
       if (m.event === 'chat') {
         const d = m.data;
         const avatar = d.profilePictureUrl || icons.tiktok;
-        // Use nickname (display name) instead of uniqueId (username)
         const displayName = d.nickname || d.uniqueId || 'Unknown';
         addChat('tiktok', displayName, d.comment, avatar);
+      } else if (m.event === 'gift') {
+        const d = m.data;
+        // Only show after stacking is complete
+        if (d.giftType === 1 && !d.repeatEnd) return;
+        const avatar = d.profilePictureUrl || icons.tiktok;
+        const displayName = d.nickname || d.uniqueId || 'Unknown';
+        const count = d.repeatCount || 1;
+        const totalDiamonds = (d.diamondCount || 0) * count;
+        const giftIcon = d.giftPictureUrl ? `<img class='gift-icon' src='${d.giftPictureUrl}' alt='gift'>` : '';
+        // Format: USERNAME: sent AMOUNT× GIFT TITLE GIFT PICTURE (DIAMONDS)
+        const giftMsg = `sent ${count}× ${d.giftName} ${giftIcon} <span style='font-size:0.85em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
+        addChat('tiktok', displayName, giftMsg, avatar);
       }
     };
   } catch (err) {
