@@ -10,7 +10,8 @@ Chat: unified chat feed from TikTok, Twitch, and YouTube
 
 ========================================
 
-![2025-05-23_22h35_34](https://github.com/user-attachments/assets/0de8159a-00b1-4334-b4fd-787c57bdf8ff)
+
+![2025-05-27_23h12_40](https://github.com/user-attachments/assets/76370b5a-c0a1-4743-b748-d0be4c8e29fb)
 
 
 ![2025-05-23_22h35_39](https://github.com/user-attachments/assets/55a28d0f-5ced-4877-acf1-3a8c02772ee4)
