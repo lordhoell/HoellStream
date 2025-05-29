@@ -279,6 +279,45 @@
 
   console.log('▶ Overlay loaded', CONFIG);
   
+  // Set up YouTube polling button handlers
+  $('#ytPollBtn').on('click', function() {
+    // Enable YouTube polling
+    sessionStorage.setItem('youtubePollingEnabled', 'true');
+    $(this).text('YouTube Started');
+    $('#ytStopBtn').prop('disabled', false);
+    
+    // Initialize YouTube live chat ID
+    initLiveChatId();
+    
+    // Immediately fetch stats
+    fetchStats();
+    
+    console.log('▶ YouTube polling enabled');
+  });
+  
+  $('#ytStopBtn').on('click', function() {
+    // Disable YouTube polling
+    sessionStorage.setItem('youtubePollingEnabled', 'false');
+    $('#ytPollBtn').text('Start YouTube');
+    $('#ytViewers').text('–');
+    $(this).prop('disabled', true);
+    
+    // Update connection status
+    updateConnectionStatus('youtube', false);
+    
+    console.log('▶ YouTube polling disabled');
+  });
+  
+  // Initialize button state based on session storage
+  if (sessionStorage.getItem('youtubePollingEnabled') === 'true') {
+    $('#ytPollBtn').text('YouTube Started');
+    $('#ytStopBtn').prop('disabled', false);
+  } else {
+    $('#ytPollBtn').text('Start YouTube');
+    $('#ytStopBtn').prop('disabled', true);
+    $('#ytViewers').text('–');
+  }
+  
   // Connection status tracking
   const connectionStatus = {
     tiktok: false,
@@ -315,23 +354,56 @@
   let ytLiveChatId = null;
   const ytSuperchatRevenue = {};  // store micros per currency
 
-  (function initLiveChatId() {
+  // Initialize YouTube Live Chat ID only when needed, not automatically
+  function initLiveChatId() {
+    // Only fetch if YouTube polling is enabled
+    if (sessionStorage.getItem('youtubePollingEnabled') !== 'true') {
+      console.log('▶ YouTube polling is disabled. Not fetching live chat ID.');
+      return;
+    }
+    
+    console.log('▶ Fetching YouTube live chat ID...');
+    
+    // Add a timestamp parameter to avoid caching issues
+    const timestamp = new Date().getTime();
     fetch(
-      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}&_t=${timestamp}`
     )
-    .then(r=>r.json())
+    .then(r=>{
+      if (!r.ok) {
+        throw new Error(`YouTube API returned status ${r.status}`);
+      }
+      return r.json();
+    })
     .then(d=>{
+      if (d.error) {
+        throw new Error(`YouTube API error: ${d.error.message || JSON.stringify(d.error)}`);
+      }
+      
       if (d.items?.length) {
         ytLiveChatId = d.items[0].snippet.liveChatId;
         // If we got a live chat ID, YouTube is connected
         updateConnectionStatus('youtube', true);
+        console.log('▶ YouTube live chat ID fetched successfully');
+      } else {
+        console.log('▶ No YouTube live chat ID found');
+        updateConnectionStatus('youtube', false);
       }
     })
     .catch(error => {
       console.error('YouTube API error:', error);
       updateConnectionStatus('youtube', false);
+      
+      // If we get a quota exceeded error, disable YouTube polling
+      if (error.message && (error.message.includes('quota') || error.message.includes('403'))) {
+        console.error('▶ YouTube API quota exceeded. Disabling YouTube polling.');
+        sessionStorage.setItem('youtubePollingEnabled', 'false');
+        $('#ytPollBtn').text('Start YouTube (Quota Exceeded)');
+      }
     });
-  })();
+  }
+  
+  // Don't automatically initialize - wait for button click
 
 
   function addItem({avatar,name,html,provider}) {
@@ -398,6 +470,10 @@
   });
 
   const lastGiftStats = {};
+  
+  // Set up the interval for regular updates (every 60 seconds)
+  // Don't automatically call fetchStats on page load - wait for button click
+  setInterval(fetchStats, 60000); // Every minute
 
   // Function to check Twitch status independently
   async function fetchTwitchStatus() {
@@ -510,16 +586,48 @@
     
     if(ytCid && ytToken){
       try {
+        // Check if we should make the API call based on the YouTube polling state
+        const youtubePollingEnabled = sessionStorage.getItem('youtubePollingEnabled') === 'true';
+        
+        if (!youtubePollingEnabled) {
+          console.log('▶ YouTube polling is disabled. Enable it by clicking the Start YouTube button.');
+          $('#ytViewers').text('–');
+          updateConnectionStatus('youtube', false);
+          return;
+        }
+        
+        console.log('▶ Fetching YouTube viewer count...');
+        
+        // Add a timestamp parameter to avoid caching issues
+        const timestamp = new Date().getTime();
         const yt = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}`
-        ).then(r => r.json());
+          `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}&_t=${timestamp}`
+        ).then(r => {
+          if (!r.ok) {
+            throw new Error(`YouTube API returned status ${r.status}`);
+          }
+          return r.json();
+        });
+        
+        if (yt.error) {
+          throw new Error(`YouTube API error: ${yt.error.message || JSON.stringify(yt.error)}`);
+        }
+        
         const live = yt.items?.[0]?.liveStreamingDetails;
         const viewers = live?.concurrentViewers || 0;
         $('#ytViewers').text(viewers);
         updateConnectionStatus('youtube', true);
       } catch(e) {
-        console.error('YouTube Data API error', e);
+        console.error('YouTube Data API error:', e);
+        $('#ytViewers').text('API Error');
         updateConnectionStatus('youtube', false);
+        
+        // If we get a quota exceeded error, disable YouTube polling
+        if (e.message && (e.message.includes('quota') || e.message.includes('403'))) {
+          console.error('▶ YouTube API quota exceeded. Disabling YouTube polling.');
+          sessionStorage.setItem('youtubePollingEnabled', 'false');
+          $('#ytPollBtn').text('Start YouTube (Quota Exceeded)');
+        }
       }
     } else {
       updateConnectionStatus('youtube', false);
@@ -571,60 +679,34 @@
         }
         tS++; $('#tiktokSubs').text(tS);
       } else if (m.event === 'gift') {
-        // --- NEW SINGLE-LINE LIVE-UPDATING GIFT STACKING ---
-        const key = d.groupId;
-        // Find or create the DOM element for this gift stack
-        let $giftLine = $(`.tiktok-gift-line[data-groupid='${key}']`);
+        // Only show after stacking is complete for Type 1 gifts
+        if (d.giftType === 1 && !d.repeatEnd) return;
+        
         const count = d.repeatCount || 1;
         const totalDiamonds = (d.diamondCount || 0) * count;
         const icon = d.giftPictureUrl || d.giftImageUrl || '';
         const displayName = d.nickname || d.uniqueId || 'Unknown';
-        const isFinal = d.giftType !== 1 || d.repeatEnd;
-        const colorClass = isFinal ? '' : 'tiktok-gift-counting';
-        // Gift message HTML
-        const giftHtml = `
-          <img class="icon" src="${icon}"> 
-          <span class="gift-count ${colorClass}">${count}× ${d.giftName}<br><span style='font-size:0.7em;color:#FFD700;'>${totalDiamonds} diamonds</span></span>
-        `;
-        if ($giftLine.length) {
-          // Update existing line
-          $giftLine.find('.gift-count').html(`${count}× ${d.giftName}<br><span style='font-size:0.7em;color:#FFD700;'>${totalDiamonds} diamonds</span>`);
-          $giftLine.find('.gift-count').toggleClass('tiktok-gift-counting', !isFinal);
-          if (isFinal) {
-            setTimeout(() => $giftLine.find('.gift-count').removeClass('tiktok-gift-counting'), 100);
-            // Find the parent event-row and animate it
-            const $parentRow = $giftLine.closest('.event-row');
-            if ($parentRow.length) {
-              $parentRow.addClass('event-animate flashPulse');
-              setTimeout(() => $parentRow.removeClass('event-animate flashPulse'), 1000);
-            } else {
-              // Fallback if not in the new structure yet
-              $giftLine.addClass('event-animate flashPulse');
-              setTimeout(() => $giftLine.removeClass('event-animate flashPulse'), 1000);
-            }
-          }
-        } else {
-          // Create new line using the same structure as other events
-          const $line = $(`
-            <div class="event-row">
-              <div class='provider-icon-box'><img src='https://www.tiktok.com/favicon.ico' alt='tiktok'></div>
-              <div class="item tiktok-item tiktok-gift-line" data-groupid="${key}">
-                <img class="avatar" src="${d.profilePictureUrl || icon}">
-                <span class="username">${displayName}</span>
-                <span class="details">${giftHtml}</span>
-              </div>
-            </div>`);
-          
-          $('.feed').append($line);
-          $line.addClass('event-animate flashPulse');
-          setTimeout(() => $line.removeClass('event-animate flashPulse'), 1000);
-        }
-        // On final, optionally scroll to bottom
-        if (isFinal) {
-  tD += totalDiamonds;
-  $('#tiktokDiamonds').text(tD);
-  $('.feed').scrollTop($('.feed')[0].scrollHeight);
-}
+        
+        // Create a unique ID for each gift to ensure a new entry is created
+        const uniqueGiftId = `${displayName}-${d.giftId}-${Date.now()}`;
+        
+        // Create HTML for the gift
+        const giftHtml = `sent ${count}× ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''} <span style='font-size:0.85em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
+        
+        // Always add a new item for each gift
+        addItem({
+          avatar: d.profilePictureUrl || d.avatarUrl, 
+          name: displayName, 
+          html: giftHtml, 
+          provider: 'tiktok'
+        });
+        
+        // Update diamond counter
+        tD += totalDiamonds;
+        $('#tiktokDiamonds').text(tD);
+        
+        // Scroll to bottom to show the new gift
+        $('.feed').scrollTop($('.feed')[0].scrollHeight);
       }
     };
   } catch(err) { 
@@ -702,19 +784,26 @@
               addItem({avatar:p.avatar, name:p.displayName||p.username, html:'FOLLOWED', provider});
               $('#twitchFollows').text((+$('#twitchFollows').text()||0)+1);
             } else if (type === 'channelPointsRedemption' || type === 'redemption') {
+              // Log the redemption payload for debugging
               console.log('▶ [DEBUG] redemption payload:', JSON.stringify(p, null, 2));
-              const user = p.displayName||p.username||p.userName||'Unknown';
-              let rewardTitle = p.redemption?.reward?.title || p.reward?.title || p.reward?.name || p.rewardTitle || p.rewardName || p.title || '';
-              let rewardAmount = p.redemption?.reward?.cost || p.reward?.cost || p.amount || '';
-              let rewardDisplay = rewardTitle;
-              if (rewardAmount && rewardTitle) rewardDisplay += ` (${rewardAmount} points)`;
-              else if (rewardAmount) rewardDisplay = `${rewardAmount} Channel Points`;
+              
+              const user = p.displayName || p.username || p.userName || 'Unknown';
+              
+              // The redemption title is in the 'redemption' field (e.g., "Hey look, it's QI")
+              // Just display this directly without any additional text
+              const rewardTitle = p.redemption || '';
+              
+              // Only fall back to amount if there's no title
+              const displayText = rewardTitle || (p.amount ? `${p.amount} Channel Points` : 'Channel Points');
+              
               // Special handling for "Highlight My Message"
               const userMsg = p.redemption?.user_input || p.user_input || p.message || '';
+              
               if (rewardTitle && rewardTitle.toLowerCase().includes('highlight my message')) {
                 addItem({avatar:p.avatar, name:user, html:`<span style='color:#FFD700'>HIGHLIGHTED: ${userMsg}</span>`, provider});
               } else {
-                addItem({avatar:p.avatar, name:user, html:`REDEEMED: ${rewardDisplay}`, provider});
+                // Display JUST the title without "REDEEMED:" prefix
+                addItem({avatar:p.avatar, name:user, html:displayText, provider});
               }
             } else if (type === 'hypetrainStart') {
               addItem({avatar:'', name:'HYPE TRAIN', html:`Level ${p.level} Started`, provider});
