@@ -59,6 +59,7 @@ Add the scope .../auth/youtube.readonly
 Click Update
 
 Click hamburger menu > APIs & Services > OAuth Consent Screen
+Redirect URL: http://localhost:4390/youtube-callback
 Click Clients
 Click + Create Client
     Application Type: Desktop
