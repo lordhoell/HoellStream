@@ -1,4 +1,6 @@
 HoellStream displays TikTok, Twitch, and YouTube chats and stream events in two separate windows:
+![2025-06-09_21h14_52](https://github.com/user-attachments/assets/d3358506-16a7-46bd-96aa-75e7a886ef9f)
+![2025-06-09_21h14_59](https://github.com/user-attachments/assets/2360c2a6-351b-42d3-be9e-7bdb4781ba13)
 
 Overlay: stream events like follows, subs, bits, superchats, and more
 Chat: unified chat feed from TikTok, Twitch, and YouTube
@@ -23,9 +25,12 @@ Use the "Reload" menu item to refresh both Overlay and Chat windows after saving
 
 ***-You will need to load your YouTube Stream ID each stream-***
 
+
+
 HOW TO OBTAIN CLIENT ID AND CLIENT SECRET FROM TWITCH AND YOUTUBE
 
 TWITCH
+
 Go to https://dev.twitch.tv/console/apps
 Click Register Your Application
     Name: HoellStream_[YourTwitchName]
@@ -40,6 +45,7 @@ Note down the Client Secret
 Save
 
 YOUTUBE
+
 Go to https://console.cloud.google.com/
 Create a new project
 Click hamburger menu > APIs & Services > Enabled API & Services
