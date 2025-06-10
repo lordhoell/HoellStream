@@ -1,256 +1,428 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Settings</title>
+  <title>HoellStream Settings</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 20px;
       background: #111;
       color: #eee;
-    }
-    .field {
-      margin-top: 15px;
-      position: relative;
-    }
-    label {
-      font-weight: bold;
-    }
-    .tooltip-container {
-      display: inline-block;
-      position: relative;
-      margin-left: 6px;
-      color: #888;
-      cursor: help;
-    }
-    .tooltip-container .tooltip-text {
-      visibility: hidden;
-      max-width: 300px;
-      background: #333;
-      color: #fff;
-      text-align: left;
-      padding: 8px;
-      border-radius: 4px;
-      position: absolute;
-      z-index: 10;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: normal;
-      word-wrap: break-word;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
     }
     .tooltip-container:hover .tooltip-text,
     .tooltip-container:focus .tooltip-text {
       visibility: visible;
     }
-    input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      background: #222;
+    h1 {
+      margin-bottom: 40px;
       color: #fff;
-      border: 1px solid #555;
-      margin-top: 4px;
-    }
-    .masked-input {
-      -webkit-text-security: disc;
-      font-family: text-security-disc;
-    }
-    .toggle-visibility {
-      position: absolute;
-      right: 10px;
-      top: 32px;
-      background: #444;
-      border: none;
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin: 0;
-      font-size: 12px;
-    }
-    .toggle-visibility:hover {
-      background: #555;
+      text-align: center;
     }
     .button-container {
       display: flex;
-      gap: 10px;
-      margin-top: 20px;
+      flex-direction: column;
+      gap: 20px;
+      width: 300px;
     }
-    button {
-      padding: 10px 20px;
-      background: #8000ff;
-      color: #fff;
-      border: none;
+    .login-button {
+      padding: 15px 25px;
+      font-size: 18px;
       font-weight: bold;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    @font-face {
-      font-family: 'text-security-disc';
-      src: url('data:font/truetype;charset=utf-8;base64,AAEAAAALAIAAAwAwT1MvMg8SBhgAAAC8AAAAYGNtYXDAS9TMAAABHAAAAGxnYXNwAAAAEAAAAYgAAAAIZ2x5ZrQKC/EAAAGQAAAA2GhlYWQHZNK9AAADaAAAADZoaGVhB3kDyQAAA6AAAAAkaG10eA8RAAAAAACkAAAAFGxvY2EAKACKAAAAsAAAAAxtYXhwAA0AMgAABGwAAAAgbmFtZVcZpu4AAASMAAACRXBvc3QAAwAAAAAG1AAAACAAAwQAAZAABQAAApkCzAAAAI8CmQLMAAAB6wAzAQkAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAABAAADmAAPA/8AAQAPAAEAAAAABAAAAAAAAAAAAAAAgAAAAAAADAAAAAwAAABwAAQADAAAAHAADAAEAAAAcAAQAUAAAABAAEAADAAAAAQAg5gDmAeYD5gT//f//AAAAAAAg5gDmAeYD5gT//f//AAH/4xoEGgMaAhoBAAMBAAAAAAAAAAAAAAAAAAAAAAEAAf//AA8AAQAAAAAAAAAAAAIAADc5AQAAAAABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAABgAA/8AEAAPAABkAIQAzAEUAVwBfAAABIgcOAQcGFRQXHgEXFjMyNz4BNzY1NCcuAScmAyImNTQ2MzIWFRQGASIuAjU0PgIzMh4CFRQOAhMiDgIVFB4CMzI+AjU0LgITIiY1NDYzMhYVFAYBIgYVFBYzMjY1NCYCAGpdXYspKCgpi11dampdXYspKCgpi11dai5FRS4uRUX+7jVdRigoRl01NV1GKChGXTUoRjQeHjRGKChGNB4eNEYoLkVFLi5FRf7uIygoIyMoKAPAKCmLXV1qal1diykoKCmLXV1qal1diyko/MBFLi5FRS4uRQGAKEZdNTVdRigoRl01NV1GKP5AHjRGKChGNB4eNEYoKEY0HgJgRS4uRUUuLkX+YCgjIygoIyMoAAEAAAABAADFzJAXXw889QALBAAAAAAA1Y+JwwAAAADVj4nDAAD/wAQAA8AAAAAIAAIAAAAAAAAAAQAAA8D/wAAABAAAAAAABAAAAQAAAAAAAAAAAAAAAAAAAAUEAAAAAAAAAAAAAAACAAAABAAAAAAAAAAACgAUAB4AuAABAAAABQBgAAYAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAADgCuAAEAAAAAAAEABwAAAAEAAAAAAAIABwBgAAEAAAAAAAMABwA2AAEAAAAAAAQABwB1AAEAAAAAAAUACwAVAAEAAAAAAAYABwBLAAEAAAAAAAoAGgCKAAMAAQQJAAEADgAHAAMAAQQJAAIADgBnAAMAAQQJAAMADgA9AAMAAQQJAAQADgB8AAMAAQQJAAUAFgAgAAMAAQQJAAYADgBSAAMAAQQJAAoANACkaWNvbW9vbgBpAGMAbwBtAG8AbwBuVmVyc2lvbiAxLjAAVgBlAHIAcwBpAG8AbgAgADEALgAwaWNvbW9vbgBpAGMAbwBtAG8AbwBuaWNvbW9vbgBpAGMAbwBtAG8AbwBuUmVndWxhcgBSAGUAZwB1AGwAYQByaWNvbW9vbgBpAGMAbwBtAG8AbwBuRm9udCBnZW5lcmF0ZWQgYnkgSWNvTW9vbi4ARgBvAG4AdAAgAGcAZQBuAGUAcgBhAHQAZQBkACAAYgB5ACAASQBjAG8ATQBvAG8AbgAuAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==') format('truetype');
+    .login-button:hover {
+      transform: translateY(-2px);
+    }
+    .login-button:active {
+      transform: translateY(1px);
+    }
+    #login-twitch {
+      background-color: #9146FF;
+      color: white;
+    }
+    #login-twitch:hover {
+      background-color: #7d2df9;
+    }
+    #login-youtube {
+      background-color: #FF0000;
+      color: white;
+    }
+    #login-youtube:hover {
+      background-color: #d90000;
+    }
+    .status {
+      margin-top: 30px;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+      min-height: 20px;
+    }
+    .success {
+      background-color: rgba(0, 128, 0, 0.2);
+      color: #4caf50;
+    }
+    .error {
+      background-color: rgba(255, 0, 0, 0.2);
+      color: #f44336;
+    }
+    .icon {
+      margin-right: 10px;
+      font-size: 24px;
     }
   </style>
 </head>
 <body>
-  <h2>Edit Stream Config</h2>
-  <form id="configForm">
-    <!-- 1. YT_STREAM_ID always first -->
-    <div class="field">
-      <label>YouTube Stream ID <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Your live‐stream’s video ID<br>studio.youtube.com/video/VIDEO_ID/livestreaming</div>
-      </span></label>
-      <input type="text" name="YT_STREAM_ID" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <!-- Moved to above Twitch Client ID -->
-    
-    <!-- 3. All other manual-entry values below, no duplicates -->
-    <div class="field">
-      <label>YouTube Data API Key <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">YT API Info: <br>https://developers.google.com/youtube/v3/getting-started</div>
-      </span></label>
-      <input type="text" name="YT_API_KEY" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label>YouTube StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Your YouTube JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
-      </span></label>
-      <input type="text" name="YT_SE_JWT" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label>YouTube StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Your YouTube Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
-      </span></label>
-      <input type="text" name="YT_SE_CID" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label>Twitch StreamElements JWT Token <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Your Twitch JWT Token in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
-      </span></label>
-      <input type="text" name="TW_SE_JWT" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label>Twitch StreamElements Channel ID <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Your Twitch Account ID in StreamElements<br>https://streamelements.com/dashboard/account/channels</div>
-      </span></label>
-      <input type="text" name="TW_SE_CID" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label for="twitchClientId">Twitch Client ID <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
-      </span></label>
-      <input type="text" name="TWITCH_CLIENT_ID" id="twitchClientId" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-    <div class="field">
-      <label for="twitchAppToken">Twitch App Access Token <span class="tooltip-container" tabindex="0">❔
-        <div class="tooltip-text">Create an app at: https://dev.twitch.tv/console/apps<br>Ensure redirect URI is: http://localhost:4390/twitch-callback</div>
-      </span></label>
-      <input type="text" name="TWITCH_APP_TOKEN" id="twitchAppToken" class="masked-input">
-      <button type="button" class="toggle-visibility">Show</button>
-    </div>
-    
-  </form>
-  
-  <!-- 4. At the very bottom, the two values filled automatically -->
-  <div class="field">
-    <label for="twitchOauth">Twitch OAuth Token <span title="OAuth token for Twitch chat access. Filled automatically.">?</span></label>
-    <input type="text" name="TWITCH_OAUTH" class="masked-input">
-    <button type="button" class="toggle-visibility">Show</button>
-  </div>
-  
-  <div class="field">
-    <label for="twitchChannel">Twitch Channel <span title="Twitch channel name. Filled automatically.">?</span></label>
-    <input type="text" name="TWITCH_CHANNEL" class="masked-input">
-    <button type="button" class="toggle-visibility">Show</button>
-  </div>
+  <h1>HoellStream Settings</h1>
   
   <div class="button-container">
-    <button type="button" id="twitchLoginBtn">Get Twitch OAuth</button>
-    <button type="button" id="saveConfigBtn">Save Config</button>
+    <button id="login-twitch" class="login-button">
+      <span class="icon">🟣</span> Log Into Twitch
+    </button>
+    <button id="login-youtube" class="login-button">
+      <span class="icon">🔴</span> Log Into YouTube
+    </button>
   </div>
-  <span id="twitchLoginStatus" style="margin-left:10px;"></span>
-
+  
+  <!-- Configuration Section -->
+  <div style="margin-top: 40px; width: 400px; border-top: 1px solid #444; padding-top: 30px;">
+    <h2 style="color: #fff; text-align: center; margin-bottom: 30px; font-size: 18px;">Configuration</h2>
+    
+    <!-- YouTube Live ID -->
+    <div class="field" style="margin-bottom: 25px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Live ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Enter Stream ID here to test offline streams and as a backup
+          </span>
+        </span>
+      </label>
+      <input type="text" id="youtube-live-id" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px;">
+    </div>
+    
+    <!-- OAuth Credentials -->
+    <h3 style="color: #fff; margin: 30px 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">OAuth Credentials</h3>
+    
+    <!-- Twitch Credentials -->
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">Twitch Client ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Twitch application's Client ID from dev.twitch.tv
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="twitch-client-id" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px;" placeholder="Enter Twitch Client ID">
+        <button type="button" onclick="toggleVisibility('twitch-client-id')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">Twitch Client Secret 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Twitch application's Client Secret from dev.twitch.tv
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="twitch-client-secret" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px;" placeholder="Enter Twitch Client Secret">
+        <button type="button" onclick="toggleVisibility('twitch-client-secret')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <!-- YouTube Credentials -->
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Client ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Google Cloud Console OAuth 2.0 Client ID for YouTube API
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="youtube-client-id" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px;" placeholder="Enter YouTube Client ID">
+        <button type="button" onclick="toggleVisibility('youtube-client-id')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <div class="field" style="margin-bottom: 30px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Client Secret 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Google Cloud Console OAuth 2.0 Client Secret for YouTube API
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="youtube-client-secret" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px;" placeholder="Enter YouTube Client Secret">
+        <button type="button" onclick="toggleVisibility('youtube-client-secret')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <!-- Single Save Button -->
+    <button id="save-all-settings" style="width: 100%; padding: 15px; background: #9146FF; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;">SAVE ALL SETTINGS</button>
+  </div>
+  
+  <!-- YouTube Emoji Management Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">YouTube Emoji Management</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <p style="color: #ccc; margin: 0 0 10px 0; font-size: 14px;">Scrape and cache YouTube channel emojis for proper display in chat.</p>
+      <div id="emoji-status" style="color: #888; font-size: 12px; margin-bottom: 15px;">Loading emoji cache status...</div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="scrape-emojis" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #00a8ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Scrape Emojis</button>
+      <button id="refresh-emoji-status" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #666; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Refresh Status</button>
+      <button id="clear-emoji-cache" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #ff4757; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Clear Cache</button>
+    </div>
+    
+    <div id="emoji-operation-status" style="margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; display: none;"></div>
+  </div>
+  
+  <div id="status" class="status"></div>
+  
   <script>
-    async function loadConfig() {
-      const config = await window.electron.ipcRenderer.invoke('load-config');
-      for (const key in config) {
-        const input = document.querySelector(`[name="${key}"]`);
-        if (input) input.value = config[key];
+    // Load existing config values when the window loads
+    window.addEventListener('load', async () => {
+      try {
+        const config = await window.electron.ipcRenderer.invoke('load-config') || {};
+        
+        // Populate YouTube Live ID
+        if (config.YT_STREAM_ID) {
+          document.getElementById('youtube-live-id').value = config.YT_STREAM_ID;
+        }
+        
+        // Populate OAuth credentials
+        if (config.TWITCH_CLIENT_ID) {
+          document.getElementById('twitch-client-id').value = config.TWITCH_CLIENT_ID;
+        }
+        if (config.TWITCH_CLIENT_SECRET) {
+          document.getElementById('twitch-client-secret').value = config.TWITCH_CLIENT_SECRET;
+        }
+        if (config.YOUTUBE_CLIENT_ID) {
+          document.getElementById('youtube-client-id').value = config.YOUTUBE_CLIENT_ID;
+        }
+        if (config.YOUTUBE_CLIENT_SECRET) {
+          document.getElementById('youtube-client-secret').value = config.YOUTUBE_CLIENT_SECRET;
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    });
+
+    // Save all settings when the save button is clicked
+    document.getElementById('save-all-settings').addEventListener('click', async () => {
+      try {
+        const ytLiveId = document.getElementById('youtube-live-id').value.trim();
+        const twitchClientId = document.getElementById('twitch-client-id').value.trim();
+        const twitchClientSecret = document.getElementById('twitch-client-secret').value.trim();
+        const youtubeClientId = document.getElementById('youtube-client-id').value.trim();
+        const youtubeClientSecret = document.getElementById('youtube-client-secret').value.trim();
+        
+        const config = await window.electron.ipcRenderer.invoke('load-config') || {};
+        
+        // Update config with new values
+        config.YT_STREAM_ID = ytLiveId;
+        config.TWITCH_CLIENT_ID = twitchClientId;
+        config.TWITCH_CLIENT_SECRET = twitchClientSecret;
+        config.YOUTUBE_CLIENT_ID = youtubeClientId;
+        config.YOUTUBE_CLIENT_SECRET = youtubeClientSecret;
+        
+        await window.electron.ipcRenderer.invoke('save-config', config);
+        
+        // Show brief success message
+        const status = document.getElementById('status');
+        status.textContent = 'All settings saved! Refreshing authentication...';
+        status.className = 'status success';
+        
+        // Trigger auth refresh in overlay and chat
+        await window.electron.ipcRenderer.invoke('refresh-overlay-auth');
+        
+        // Close the window after a short delay
+        setTimeout(() => {
+          window.electron.ipcRenderer.send('close-settings');
+        }, 1500);
+      } catch (error) {
+        const status = document.getElementById('status');
+        status.textContent = `Error saving settings: ${error.message}`;
+        status.className = 'status error';
+      }
+    });
+
+    // Handle button clicks
+    document.getElementById('login-twitch').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      status.textContent = 'Initiating Twitch login...';
+      status.className = 'status';
+      
+      try {
+        window.electron.ipcRenderer.send('oauth-login', 'twitch');
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        status.className = 'status error';
+      }
+    });
+    
+    document.getElementById('login-youtube').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      status.textContent = 'Initiating YouTube login...';
+      status.className = 'status';
+      
+      try {
+        window.electron.ipcRenderer.send('oauth-login', 'youtube');
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        status.className = 'status error';
+      }
+    });
+    
+    // Listen for auth results
+    window.electron.ipcRenderer.on('oauth-result', (platform, success) => {
+      const status = document.getElementById('status');
+      if (success) {
+        status.textContent = `Successfully logged into ${platform}!`;
+        status.className = 'status success';
+      } else {
+        status.textContent = `Failed to log into ${platform}. Please try again.`;
+        status.className = 'status error';
+      }
+    });
+    
+    // Load emoji cache status on page load
+    async function loadEmojiStatus() {
+      try {
+        const stats = await window.electron.ipcRenderer.invoke('youtube-emoji-cache-status');
+        const statusEl = document.getElementById('emoji-status');
+        if (stats.error) {
+          statusEl.textContent = `Error: ${stats.error}`;
+          statusEl.style.color = '#ff4757';
+        } else {
+          statusEl.textContent = `Cached emojis: ${stats.totalEmojis} | Cache directory: ${stats.cacheDirectory}`;
+          statusEl.style.color = stats.totalEmojis > 0 ? '#2ed573' : '#888';
+        }
+      } catch (error) {
+        document.getElementById('emoji-status').textContent = `Error loading status: ${error.message}`;
       }
     }
-
-    document.getElementById('saveConfigBtn').addEventListener('click', async () => {
-      const form = document.getElementById('configForm');
-      const data = {};
-      new FormData(form).forEach((val, key) => data[key] = val);
+    
+    // Load emoji status when page loads
+    loadEmojiStatus();
+    
+    // Emoji management button handlers
+    document.getElementById('scrape-emojis').addEventListener('click', async () => {
+      const button = document.getElementById('scrape-emojis');
+      const statusEl = document.getElementById('emoji-operation-status');
       
-      // Also include the auto-filled Twitch values
-      const twitchOauth = document.querySelector('[name="TWITCH_OAUTH"]').value;
-      const twitchChannel = document.querySelector('[name="TWITCH_CHANNEL"]').value;
-      if (twitchOauth) data.TWITCH_OAUTH = twitchOauth;
-      if (twitchChannel) data.TWITCH_CHANNEL = twitchChannel;
+      button.disabled = true;
+      button.textContent = 'Scraping...';
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Starting emoji scraping process...';
+      statusEl.style.background = '#ffa502';
+      statusEl.style.color = '#000';
       
-      await window.electron.ipcRenderer.invoke('save-config', data);
-      alert('Config saved!');
-    });
-
-    loadConfig();
-
-    // Add event listeners for all toggle visibility buttons
-    document.querySelectorAll('.toggle-visibility').forEach(button => {
-      button.addEventListener('click', function() {
-        const input = this.previousElementSibling;
-        if (input.classList.contains('masked-input')) {
-          input.classList.remove('masked-input');
-          this.textContent = 'Hide';
+      try {
+        const result = await window.electron.ipcRenderer.invoke('youtube-scrape-emojis');
+        
+        if (result.success) {
+          statusEl.textContent = `Success! Found ${result.emojisFound} emojis, ${result.emojisNew} new. Total cached: ${result.totalCached}`;
+          statusEl.style.background = '#2ed573';
+          statusEl.style.color = '#fff';
+          loadEmojiStatus(); // Refresh status display
         } else {
-          input.classList.add('masked-input');
-          this.textContent = 'Show';
+          statusEl.textContent = `Scraping failed: ${result.error}`;
+          statusEl.style.background = '#ff4757';
+          statusEl.style.color = '#fff';
         }
-      });
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.style.background = '#ff4757';
+        statusEl.style.color = '#fff';
+      }
+      
+      button.disabled = false;
+      button.textContent = 'Scrape Emojis';
+      
+      // Hide status after 5 seconds
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 5000);
     });
-
-    // --- Twitch Login Integration ---
-    document.getElementById('twitchLoginBtn').addEventListener('click', async () => {
-      const status = document.getElementById('twitchLoginStatus');
-      status.textContent = '';
-      // Read values from the form
-      const clientId = document.querySelector('[name="TWITCH_CLIENT_ID"]').value.trim();
-      const clientSecret = document.querySelector('[name="TWITCH_APP_TOKEN"]').value.trim();
-      if (!clientId || !clientSecret) {
-        status.textContent = 'Error: Please enter both Twitch Client ID and App Access Token (Secret) first.';
+    
+    document.getElementById('refresh-emoji-status').addEventListener('click', () => {
+      loadEmojiStatus();
+    });
+    
+    document.getElementById('clear-emoji-cache').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear the emoji cache? This will remove all cached emojis.')) {
         return;
       }
-      status.textContent = 'Opening Twitch login...';
-      const result = await window.electron.ipcRenderer.invoke('twitch-login', { clientId, clientSecret });
-      if (result && result.success) {
-        document.querySelector('[name="TWITCH_OAUTH"]').value = result.oauth;
-        document.querySelector('[name="TWITCH_CHANNEL"]').value = result.channel;
-        // Immediately save config
-        const form = document.getElementById('configForm');
-        const data = {};
-        new FormData(form).forEach((val, key) => data[key] = val);
-        await window.electron.ipcRenderer.invoke('save-config', data);
-        status.textContent = 'Twitch login successful! (Values saved)';
-      } else {
-        document.querySelector('[name="TWITCH_OAUTH"]').value = '';
-        document.querySelector('[name="TWITCH_CHANNEL"]').value = '';
-        status.textContent = 'Twitch login failed or cancelled.';
+      
+      const button = document.getElementById('clear-emoji-cache');
+      const statusEl = document.getElementById('emoji-operation-status');
+      
+      button.disabled = true;
+      button.textContent = 'Clearing...';
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Clearing emoji cache...';
+      statusEl.style.background = '#ffa502';
+      statusEl.style.color = '#000';
+      
+      try {
+        const result = await window.electron.ipcRenderer.invoke('youtube-emoji-clear-cache');
+        
+        if (result.success) {
+          statusEl.textContent = 'Emoji cache cleared successfully!';
+          statusEl.style.background = '#2ed573';
+          statusEl.style.color = '#fff';
+          loadEmojiStatus(); // Refresh status display
+        } else {
+          statusEl.textContent = `Failed to clear cache: ${result.error}`;
+          statusEl.style.background = '#ff4757';
+          statusEl.style.color = '#fff';
+        }
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.style.background = '#ff4757';
+        statusEl.style.color = '#fff';
       }
+      
+      button.disabled = false;
+      button.textContent = 'Clear Cache';
+      
+      // Hide status after 3 seconds
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 3000);
     });
+    
+    // Toggle visibility of password fields
+    function toggleVisibility(id) {
+      const input = document.getElementById(id);
+      const button = input.nextElementSibling;
+      if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = 'Hide';
+      } else {
+        input.type = 'password';
+        button.textContent = 'Show';
+      }
+    }
   </script>
 </body>
 </html>

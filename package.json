@@ -1,6 +1,6 @@
 {
-  "name": "HoellStream",
-  "version": "0.7.2",
+  "name": "hoellstream",
+  "version": "0.8.5",
   "description": "Show all your stream data in on place!",
   "author": "Patrick Hoell",
   "main": "main.js",
@@ -28,6 +28,7 @@
     "electron-builder": "^24.6.0"
   },
   "dependencies": {
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "ws": "^8.14.0"
   }
 }

@@ -4,7 +4,27 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 // Expose Electron APIs to the renderer process
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
-    invoke: (channel, data) => ipcRenderer.invoke(channel, data)
+    invoke: (channel, data) => ipcRenderer.invoke(channel, data),
+    send: (channel, data) => ipcRenderer.send(channel, data),
+    on: (channel, callback) => {
+      const subscription = (event, ...args) => callback(event, ...args);
+      ipcRenderer.on(channel, subscription);
+      return () => ipcRenderer.removeListener(channel, subscription);
+    }
+  },
+  // Expose auth module functions
+  auth: {
+    getTokens: () => ipcRenderer.invoke('get-tokens'),
+    ensureTwitchToken: () => ipcRenderer.invoke('ensure-twitch-token'),
+    ensureYouTubeToken: () => ipcRenderer.invoke('ensure-youtube-token'),
+    getTwitchStreamInfo: () => ipcRenderer.invoke('get-twitch-stream-info'),
+    getYouTubeStreamInfo: () => ipcRenderer.invoke('get-youtube-stream-info'),
+    getYouTubeLiveChatId: () => ipcRenderer.invoke('get-youtube-live-chat-id')
+  },
+  // Expose config module functions
+  config: {
+    get: (key) => ipcRenderer.invoke('get-config', key),
+    set: (key, value) => ipcRenderer.invoke('set-config', {key, value})
   },
   zoom: {
     getZoomFactor: () => webFrame.getZoomFactor(),

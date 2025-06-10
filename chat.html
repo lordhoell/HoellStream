@@ -12,7 +12,34 @@
     .avatar { margin-right:10px; }
     .username { font-weight:bold; color:#c47cff; margin-right:8px; }
     .message { flex:1; color:#fff; word-break:break-word; }
-    .gift-icon, .emote { vertical-align:middle; margin:0 2px; max-height:28px; }
+    .gift-icon, .emote { vertical-align:middle; max-height:28px; }
+    .gift-icon {
+      height: 20px;
+      margin: 0 4px;
+    }
+    
+    .emote {
+      height: 24px;
+      margin: 0 2px;
+      display: inline-block;
+    }
+    
+    /* Twitch emote styling */
+    .twitch-emote {
+      height: 1.5em;
+      vertical-align: middle;
+      margin: 0 2px;
+      display: inline-block;
+    }
+    
+    /* YouTube emoji styling */
+    .youtube-emoji {
+      height: 36px;
+      width: 36px;
+      vertical-align: middle;
+      margin: 0 2px;
+      display: inline-block;
+    }
     
     /* Connection status indicators */
     .status-bar {
@@ -67,30 +94,6 @@
       box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
     }
     
-    #ytToggleBtn,
-    #ytStopBtn {
-      font-family: sans-serif;
-      font-size: 0.9em;
-      font-weight: bold;
-      color: #B266FF;
-      background: rgba(50, 50, 50, 0.8);
-      border: 1px solid #B266FF;
-      border-radius: 4px;
-      padding: 0.5em 1em;
-      margin: 0.1em;
-      cursor: pointer;
-      white-space: nowrap;
-      z-index: 200;
-    }
-    
-    #ytToggleBtn:hover,
-    #ytStopBtn:hover {
-      background: rgba(80, 0, 160, 0.3);
-    }
-    
-    #ytToggleBtn { position: absolute; top: 10px; right: 10px; }
-    #ytStopBtn   { position: absolute; top: 40px; right: 10px; }
-    
     /* Add padding to the top of chat feed to account for status bar */
     .chat-feed {
       padding-top: 40px;
@@ -121,17 +124,14 @@
   </div>
 
   <div id="chatFeed" class="chat-feed"></div>
-  <button id="ytToggleBtn">
-    Start YouTube
-  </button>
-  <button id="ytStopBtn">
-    Stop YouTube
-  </button>
   <script>
 (async () => {
-  const C = await window.electron.ipcRenderer.invoke('load-config');
+  // Load OAuth tokens only
+  let TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+  
+  console.log('Chat script loaded with OAuth tokens');
+  console.log('Twitch token available:', !!TOKENS?.twitch?.access_token);
 
-  console.log('▶ Unified Chat script loaded', C);
   const feed = document.getElementById('chatFeed');
   const icons = {
     tiktok: 'https://www.tiktok.com/favicon.ico',
@@ -148,6 +148,7 @@
   
   // Function to update connection status indicators
   function updateConnectionStatus(service, isConnected) {
+    console.log(`updateConnectionStatus called with service: ${service}, isConnected: ${isConnected}`);
     connectionStatus[service] = isConnected;
     const statusElement = document.getElementById(`${service}-status`);
     if (statusElement) {
@@ -170,7 +171,9 @@
   const emotes = {};
   
   // Add a chat message to the feed
-  function addChat(platform, user, message, avatar, color) {
+  function addChat(platform, user, message, avatar, color, isHtml = false) {
+    console.log(`[addChat] Called with:`, { platform, user, message, avatar, color, isHtml });
+    
     const line = document.createElement('div');
     line.className = 'chat-line';
     
@@ -204,8 +207,8 @@
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     
-    // Render TikTok gifts as HTML, others as text
-    if (platform === 'tiktok' && /gift-icon/.test(message)) {
+    // Render messages with HTML or emotes
+    if (isHtml || platform === 'tiktok' && /gift-icon/.test(message)) {
       messageDiv.innerHTML = message;
     } else if (platform === 'twitch' && emotes[user] && emotes[user][message]) {
       messageDiv.innerHTML = emotes[user][message];
@@ -216,166 +219,216 @@
     line.appendChild(messageDiv);
     feed.appendChild(line);
     feed.scrollTop = feed.scrollHeight;
+    
+    console.log(`[addChat] Successfully added message to feed. Total messages in feed: ${feed.children.length}`);
   }
 
-  function getAvatar(user) {
-    if(cache[user]) return Promise.resolve(cache[user]);
+  async function getAvatar(user) {
+    if(cache[user]) return cache[user];
     
-    // Make sure we have valid credentials before making the API call
-    if(!C.TWITCH_CLIENT_ID) {
-      console.error('Missing Twitch Client ID');
-      return Promise.resolve(icons.twitch);
-    }
-    
-    // Check for token and log what we have
-    if(!C.TWITCH_OAUTH && !C.TWITCH_APP_TOKEN) {
-      console.error('Missing both TWITCH_OAUTH and TWITCH_APP_TOKEN');
-      return Promise.resolve(icons.twitch);
-    }
-    
-    // Prefer TWITCH_OAUTH over TWITCH_APP_TOKEN if available
-    let token = C.TWITCH_OAUTH || C.TWITCH_APP_TOKEN;
-    
-    // Clean the token - remove oauth: prefix if present
-    token = token.replace(/^oauth:/, '');
-    
-    console.log(`Fetching avatar for ${user} with token starting with: ${token.substring(0, 5)}...`);
-    
-    return fetch(`https://api.twitch.tv/helix/users?login=${user}`, {
-      headers: { 
-        'Client-ID': C.TWITCH_CLIENT_ID, 
-        'Authorization': `Bearer ${token}` 
+    try {
+      
+      // Use the auth module to ensure we have a valid token
+      const hasToken = await window.electron.auth.ensureTwitchToken();
+      if (!hasToken) {
+        console.error('No valid Twitch token available');
+        return icons.twitch;
       }
-    }).then(r => {
-      if (!r.ok) {
-        console.error(`Twitch API error: ${r.status} ${r.statusText}`);
-        console.error(`Headers used: Client-ID: ${C.TWITCH_CLIENT_ID.substring(0, 5)}..., Token: ${token.substring(0, 5)}...`);
-        throw new Error(`API request failed with status ${r.status}`);
+      
+      // Refresh our tokens to ensure we have the latest
+      TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+      if (!TOKENS?.twitch?.access_token) {
+        console.error('No Twitch access token available');
+        return icons.twitch;
       }
-      return r.json();
-    }).then(j => {
-      const url = j.data?.[0]?.profile_image_url || icons.twitch;
-      cache[user] = url; return url;
-    }).catch(err => {
+      
+      console.log('Using refreshed token:', TOKENS.twitch.access_token.substring(0, 5) + '...');
+      
+      console.log(`Making API call to get avatar for user: ${user}`);
+      
+      // Get the Client-ID from the token validation
+      const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+        headers: { 'Authorization': `OAuth ${TOKENS.twitch.access_token}` }
+      });
+      
+      if (!validateResponse.ok) {
+        console.error(`Token validation failed: ${validateResponse.status}`);
+        return icons.twitch;
+      }
+      
+      const validateData = await validateResponse.json();
+      const clientId = validateData.client_id;
+      
+      console.log(`Using Client-ID from token: ${clientId}`);
+      console.log(`Using token: ${TOKENS.twitch.access_token.substring(0, 5)}...`);
+      
+      // Make the API call to get user info
+      const response = await fetch(`https://api.twitch.tv/helix/users?login=${user}`, {
+        headers: {
+          'Client-ID': clientId,
+          'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`Error fetching avatar for ${user}: ${response.status}`);
+        console.error(`Response details:`, await response.text());
+        return icons.twitch;
+      }
+      
+      const data = await response.json();
+      console.log(`Avatar data for ${user}:`, data);
+      const url = data.data?.[0]?.profile_image_url || icons.twitch;
+      cache[user] = url;
+      return url;
+    } catch (err) {
       console.error('Error fetching Twitch avatar:', err);
       return icons.twitch;
+    }
+  }
+  
+  // Twitch Chat IPC listener
+  window.electron.ipcRenderer.on('twitch-chat-message', (event, data) => {
+    console.log('Received Twitch chat message:', data);
+    const { username, message, tags } = data;
+    const displayName = tags['display-name'] || username;
+    getAvatar(username).then(avatar => {
+      // Check if message contains HTML (emotes)
+      const hasEmotes = message.includes('<img');
+      addChat('twitch', displayName, message, avatar, null, hasEmotes);
     });
-  }
-  
-  // Twitch Chat WebSocket
-  const tw = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-  
-  tw.onopen = () => {
-    console.log('Twitch IRC open');
-    // use the token exactly as given (it already has "oauth:")
-    tw.send(`PASS ${C.TWITCH_OAUTH}`);
-    tw.send(`NICK ${C.TWITCH_CHANNEL}`);
-    tw.send(`JOIN #${C.TWITCH_CHANNEL}`);
-    updateConnectionStatus('twitch', true);
-  };
-  
-  tw.onclose = () => {
-    console.log('Twitch IRC closed');
-    updateConnectionStatus('twitch', false);
-  };
-  
-  tw.onerror = (error) => {
-    console.error('Twitch IRC error:', error);
-    updateConnectionStatus('twitch', false);
-  };
+  });
 
-  // Cache for display names
-  const displayNameCache = {};
-  
-  // Function to extract display name from IRC tags
-  function extractDisplayName(tags, username) {
-    if (!tags) return displayNameCache[username] || username;
+  // YouTube Events IPC listener (for all events including chat)
+  window.electron.ipcRenderer.on('youtube-data-update', (event, data) => {
+    console.log('Received YouTube data update:', data);
     
-    // Log the tags for debugging
-    console.log('▶ Twitch tags:', tags);
-    
-    // Extract display-name from tags
-    // Tags format is like: display-name=UserName;emotes=;subscriber=0;...
-    const displayNameMatch = tags.match(/display-name=([^;]+)/i);
-    if (displayNameMatch && displayNameMatch[1] && displayNameMatch[1] !== '') {
-      console.log('▶ Found display name:', displayNameMatch[1]);
-      return displayNameMatch[1];
+    // Add detailed emoji debugging for YouTube chat messages
+    if (data && data.chatMessages && data.chatMessages.length > 0) {
+      console.log(`🔍 [Chat] Processing ${data.chatMessages.length} YouTube chat messages`);
+      data.chatMessages.forEach((msg, index) => {
+        console.log(`🔍 [Chat] YouTube message ${index}:`, {
+          displayName: msg.displayName,
+          message: msg.message,
+          fullMessage: msg,
+          hasHtml: msg.message && msg.message.includes('<'),
+          messageLength: msg.message ? msg.message.length : 0
+        });
+      });
     }
     
-    // If no display name in tags or it's empty, use the username
-    return displayNameCache[username] || username;
-  }
-
-  tw.onmessage = e => {
-    const msg = e.data.trim();
-    console.log('▶ Twitch raw:', msg);
-    
-    if (msg.includes('PING :tmi.twitch.tv')) {
-      tw.send('PONG :tmi.twitch.tv');
-      return;
-    }
-    
-    if (msg.includes('PRIVMSG')) {
-      try {
-        // Parse the message properly for IRCv3 tags
-        let tags = {};
-        let username = '';
-        let text = '';
+    // Process all events (chat, superchats, memberships, etc.)
+    if (data && data.events && data.events.length > 0) {
+      data.events.forEach(event => {
+        console.log(`🔍 [Chat] Processing YouTube event:`, event);
+        console.log(`🔍 [Chat] Raw event message field:`, event.message);
+        console.log(`🔍 [Chat] Raw event text field:`, event.text);
+        console.log(`🔍 [Chat] Event contains HTML:`, event.message && event.message.includes('<'));
         
-        // Check if message has tags (starts with @)
-        if (msg.startsWith('@')) {
-          const tagPart = msg.substring(1, msg.indexOf(' '));
-          // Parse tags into an object
-          tagPart.split(';').forEach(tag => {
-            const [key, value] = tag.split('=');
-            if (key && value !== undefined) {
-              tags[key] = value;
-            }
-          });
-          
-          // Extract username and message text
-          const restOfMessage = msg.substring(msg.indexOf(' ') + 1);
-          const userMatch = restOfMessage.match(/:([^!]+).*PRIVMSG #[^ ]+ :(.*)/); 
-          if (userMatch) {
-            username = userMatch[1];
-            text = userMatch[2];
+        // Map event data with proper avatar and display name fallbacks (like overlay does)
+        const mappedEvent = {
+          ...event,
+          // Ensure avatar and displayName are available
+          avatar: event.author?.avatar || event.avatar || icons.youtube,
+          displayName: event.author?.name || event.displayName || event.username || 'Unknown User'
+        };
+        
+        handleYouTubeEvent(event.type, mappedEvent);
+      });
+    }
+    
+    // Update connection status
+    updateConnectionStatus('youtube', data.connectionStatus);
+  });
+
+  // Function to handle YouTube events and display them in chat format
+  function handleYouTubeEvent(eventType, eventData) {
+    console.log(`🔍 [Chat] handleYouTubeEvent called with type: ${eventType}`, eventData);
+    
+    let message = '';
+    
+    switch(eventType) {
+      case 'chat':
+      case 'textMessageEvent':
+        // Regular chat message - check for emoji processing
+        const rawMessage = eventData.message || eventData.text || '';
+        console.log(`🔍 [Chat] Processing YouTube chat message: "${rawMessage}"`);
+        console.log(`🔍 [Chat] Message contains HTML: ${rawMessage.includes('<')}`);
+        console.log(`🔍 [Chat] Message contains img tags: ${rawMessage.includes('<img')}`);
+        
+        // Check if message already contains processed emojis (HTML img tags)
+        if (rawMessage.includes('<img') && rawMessage.includes('youtube-emoji')) {
+          console.log(`✅ [Chat] Message already contains processed YouTube emojis!`);
+          message = rawMessage; // Use as-is since it's already processed
+        } else {
+          console.log(`📝 [Chat] Using raw message text (no emojis detected)`);
+          message = rawMessage;
+        }
+        break;
+      case 'superchat':
+      case 'superChatEvent':
+        message = `Super Chat ${eventData.amount || ''} ${eventData.message || ''}`.trim();
+        break;
+      case 'supersticker':
+      case 'superStickerEvent':
+        message = `Super Sticker ${eventData.amount || ''}`;
+        break;
+      case 'sponsor':
+      case 'newSponsorEvent':
+        if (eventData.gifted) {
+          if (eventData.giftCount) {
+            message = `gifted ${eventData.giftCount} memberships`;
+          } else {
+            message = `gifted a membership`;
+          }
+          if (eventData.giftRecipient) {
+            message += ` to ${eventData.giftRecipient}`;
+          }
+          if (eventData.memberLevelName) {
+            message += ` (${eventData.memberLevelName})`;
           }
         } else {
-          // Fallback for messages without tags
-          const match = msg.match(/:([^!]+).*PRIVMSG #[^ ]+ :(.*)/); 
-          if (match) {
-            username = match[1];
-            text = match[2];
+          message = `just became a member!`;
+          if (eventData.memberLevelName) {
+            message = `just became a ${eventData.memberLevelName} member!`;
+          }
+          if (eventData.isUpgrade) {
+            message = `upgraded their membership to ${eventData.memberLevelName || 'Member'}!`;
           }
         }
-        
-        if (username && text) {
-          // Get display name from tags or use username
-          let displayName = username;
-          
-          if (tags && tags['display-name']) {
-            displayName = tags['display-name'];
-            console.log(`▶ Using display name from tags: ${displayName}`);
-          } else if (displayNameCache[username]) {
-            displayName = displayNameCache[username];
-            console.log(`▶ Using cached display name: ${displayName}`);
-          }
-          
-          console.log(`▶ Twitch message from ${username}, display name: ${displayName}`);
-          
-          // Cache the display name for future messages
-          displayNameCache[username] = displayName;
-          
-          getAvatar(username).then(avatar => {
-            addChat('twitch', displayName, text, avatar);
-          });
+        break;
+      case 'milestone':
+      case 'memberMilestoneChatEvent':
+        message = `membership milestone`;
+        if (eventData.memberMonth) {
+          message += ` (${eventData.memberMonth} months)`;
         }
-      } catch (error) {
-        console.error('Error parsing Twitch message:', error, msg);
-      }
+        if (eventData.message) {
+          message += `: ${eventData.message}`;
+        }
+        break;
+      case 'gift_membership_purchase':
+      case 'membershipGiftingEvent':
+        message = `gifted ${eventData.giftCount || 1} memberships`;
+        if (eventData.memberLevelName) {
+          message += ` (${eventData.memberLevelName})`;
+        }
+        break;
+      case 'subscription':
+        message = 'subscribed!';
+        break;
+      default:
+        message = eventData.message || eventData.text || `${eventType}`;
     }
-  };
-  
+
+    // Add to chat feed using the properly mapped data
+    // Check if message contains HTML emoji tags and use HTML rendering
+    const hasEmojis = message.includes('<img') && message.includes('youtube-emoji');
+    console.log(`🔍 [Chat] Adding YouTube message to chat. HasEmojis: ${hasEmojis}, Message: "${message}"`);
+    
+    addChat('youtube', eventData.displayName, message, eventData.avatar, null, hasEmojis);
+  }
+
   // TikTok WebSocket
   try {
     const tikWs = new WebSocket('ws://localhost:21213/');
@@ -403,7 +456,50 @@
         const d = m.data;
         const avatar = d.profilePictureUrl || icons.tiktok;
         const displayName = d.nickname || d.uniqueId || 'Unknown';
-        addChat('tiktok', displayName, d.comment, avatar);
+        
+        // Enhanced logging for TikTok chat messages
+        console.log('▶ TikTok chat message:', {
+          text: d.comment,
+          fullData: d,
+          hasEmoji: d.comment && (d.comment.includes('\uD83D') || d.comment.includes('\uD83C')), // Basic emoji detection
+          charCodes: d.comment ? Array.from(d.comment).map(c => c.charCodeAt(0).toString(16)) : [],
+          emotes: d.emotes
+        });
+        
+        // Process TikTok emotes if present
+        let processedMessage = d.comment || '';
+        
+        // Check if the message has emotes to process
+        if (d.emotes && Array.isArray(d.emotes) && d.emotes.length > 0) {
+          console.log('▶ TikTok message has emotes:', d.emotes);
+          
+          // Create HTML for each emote
+          // Clear the message text since we're just showing emotes
+          processedMessage = '';
+          
+          d.emotes.forEach(emote => {
+            if (emote.emoteImageUrl) {
+              // Create an image tag for the emote
+              const emoteImg = `<img class='emote' src='${emote.emoteImageUrl}' alt='${emote.emoteId || "emote"}' title='${emote.emoteId || ""}'>`;
+              // Add the emote to the message
+              processedMessage += emoteImg;
+            }
+          });
+          
+          // If the message was empty and we only added emotes, add a space for better display
+          if (d.comment.trim() === '') {
+            console.log('▶ TikTok: Empty message with only emotes');
+          } else {
+            // If there was text in the original message, add it back
+            processedMessage = d.comment + ' ' + processedMessage;
+          }
+          
+          // Use innerHTML for messages with emotes
+          addChat('tiktok', displayName, processedMessage, avatar, null, true);
+        } else {
+          // Regular text message without emotes
+          addChat('tiktok', displayName, processedMessage, avatar);
+        }
       } else if (m.event === 'gift') {
         const d = m.data;
         // Only show after stacking is complete
@@ -419,104 +515,72 @@
       }
     };
   } catch (err) {
-    console.error('TikTok WS error', err);
+    console.error('▶ TikTok WebSocket connection failed:', err);
     updateConnectionStatus('tiktok', false);
   }
-  
-  // YouTube Chat
-  let ytChatInterval;
-  let ytNextPageToken = null;
-  
-  document.getElementById('ytToggleBtn').addEventListener('click', () => {
-    if (ytChatInterval) return; // already running
-    console.log('▶ Starting YouTube chat polling');
-    updateConnectionStatus('youtube', true);
-    
-    // Initial fetch
-    fetchYouTubeChat();
-    
-    // Then poll every 5 seconds
-    ytChatInterval = setInterval(fetchYouTubeChat, 5000);
+
+  // YouTube polling variables
+  let ytNextPageToken = '';
+  let youtubePollingInterval = null;
+
+  // Set up YouTube service data listeners
+  window.electron.ipcRenderer.on('youtube-connection-status', (event, data) => {
+    if (data && typeof data.connectionStatus !== 'undefined') {
+      updateConnectionStatus('youtube', data.connectionStatus);
+    }
   });
-  
-  document.getElementById('ytStopBtn').addEventListener('click', () => {
-    if (!ytChatInterval) return;
-    clearInterval(ytChatInterval);
-    ytChatInterval = null;
-    ytNextPageToken = null;
-    console.log('▶ Stopped YouTube chat polling');
-    updateConnectionStatus('youtube', false);
+
+  window.electron.ipcRenderer.on('twitch-connection-status', (event, data) => {
+    if (data && typeof data.connectionStatus !== 'undefined') {
+      updateConnectionStatus('twitch', data.connectionStatus);
+    }
   });
-  
-  async function fetchYouTubeChat() {
-    try {
-      // First we need to get the live chat ID if we don't have it
-      if (!C.YT_LIVE_CHAT_ID) {
-        console.log('▶ YouTube: Fetching live chat ID for stream:', C.YT_STREAM_ID);
+
+  // Token reload listener for auth refresh
+  window.electron.ipcRenderer.on('reload-tokens', async () => {
+    console.log('🔄 [Chat] Reloading tokens from secure storage...');
+    TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+    console.log('✅ [Chat] Tokens reloaded successfully');
+  });
+
+  // Handle YouTube emoji cache updates for retroactive replacement
+  window.electron.ipcRenderer.on('youtube-emoji-cache-update', (event, newEmojiCount) => {
+    console.log(`🎨 [Chat] YouTube emoji cache updated with ${newEmojiCount} new emojis - updating recent messages...`);
+    updateRecentYouTubeMessagesWithNewEmojis();
+  });
+
+  // Retroactively update recent YouTube messages with newly cached emojis
+  async function updateRecentYouTubeMessagesWithNewEmojis() {
+    const chatLines = feed.querySelectorAll('.chat-line');
+    const recentLines = Array.from(chatLines).slice(-20); // Process last 20 messages
+    
+    console.log(`🎨 [Chat] Checking ${recentLines.length} recent messages for YouTube emoji updates...`);
+    
+    for (const line of recentLines) {
+      const messageDiv = line.querySelector('.message');
+      const platformIcon = line.querySelector('.platform-icon');
+      
+      // Only process YouTube messages that contain emoji shortcodes
+      if (messageDiv && platformIcon && platformIcon.alt === 'youtube') {
+        const currentText = messageDiv.textContent;
         
-        if (!C.YT_STREAM_ID || !C.YT_API_KEY) {
-          console.error('▶ YouTube: Missing stream ID or API key');
-          updateConnectionStatus('youtube', false);
-          return;
-        }
-        
-        const videoResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${C.YT_STREAM_ID}&key=${C.YT_API_KEY}`
-        );
-        
-        if (!videoResponse.ok) {
-          console.error('▶ YouTube API error:', videoResponse.status, videoResponse.statusText);
-          updateConnectionStatus('youtube', false);
-          return;
-        }
-        
-        const videoData = await videoResponse.json();
-        console.log('▶ YouTube video data:', videoData);
-        
-        if (!videoData.items || !videoData.items[0] || !videoData.items[0].liveStreamingDetails) {
-          console.error('▶ YouTube: No live streaming details found');
-          updateConnectionStatus('youtube', false);
-          return;
-        }
-        
-        C.YT_LIVE_CHAT_ID = videoData.items[0].liveStreamingDetails.activeLiveChatId;
-        console.log('▶ YouTube: Got live chat ID:', C.YT_LIVE_CHAT_ID);
-        
-        if (!C.YT_LIVE_CHAT_ID) {
-          console.error('▶ YouTube: No active live chat ID found');
-          updateConnectionStatus('youtube', false);
-          return;
+        // Check if message contains emoji shortcodes that might now be cached
+        if (currentText && currentText.includes(':')) {
+          console.log(`🎨 [Chat] Re-processing YouTube message: "${currentText}"`);
+          
+          try {
+            // Request fresh processing from YouTube API service
+            const processedMessage = await window.electron.ipcRenderer.invoke('youtube-process-message', currentText);
+            
+            if (processedMessage && processedMessage !== currentText) {
+              console.log(`🎨 [Chat] ✅ Updated message: "${currentText}" -> "${processedMessage}"`);
+              messageDiv.innerHTML = processedMessage;
+            }
+          } catch (error) {
+            console.error('🎨 [Chat] ❌ Failed to re-process message:', error);
+          }
         }
       }
-      
-      // Now fetch the chat messages
-      const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${C.YT_LIVE_CHAT_ID}&part=snippet,authorDetails&maxResults=200${ytNextPageToken ? `&pageToken=${ytNextPageToken}` : ''}&key=${C.YT_API_KEY}`;
-      
-      const chatResponse = await fetch(chatUrl);
-      const chatData = await chatResponse.json();
-      
-      if (chatData.error) {
-        console.error('▶ YouTube chat error:', chatData.error);
-        updateConnectionStatus('youtube', false);
-        return;
-      }
-      
-      // Store the next page token for subsequent requests
-      ytNextPageToken = chatData.nextPageToken;
-      
-      // Process the chat messages
-      for (const item of chatData.items || []) {
-        const message = item.snippet.displayMessage;
-        const user = item.authorDetails.displayName;
-        const avatar = item.authorDetails.profileImageUrl || icons.youtube;
-        
-        addChat('youtube', user, message, avatar);
-      }
-      
-      updateConnectionStatus('youtube', true);
-    } catch (error) {
-      console.error('▶ Error fetching YouTube chat:', error);
-      updateConnectionStatus('youtube', false);
     }
   }
 })();

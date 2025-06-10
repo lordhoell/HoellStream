@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>HoellStream - Stream Events</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     html, body {
@@ -32,7 +33,7 @@
     /* Platform icon container with status indicator */
     .platform-icon-container {
       position: relative;
-      width: 32px; height: 32px;
+      width: 40px; height: 40px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -40,9 +41,10 @@
     }
     
     .platform-icon-inline {
-      width: 24px; height: 24px;
+      width: 32px; height: 32px;
       filter: drop-shadow(0 0 2px #8000FF);
       z-index: 2;
+      margin-top: 32px;
     }
     
     /* Connection status indicator */
@@ -52,9 +54,27 @@
       height: 100%;
       border-radius: 50%;
       z-index: 1;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      margin-top: 32px;
     }
-    
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .status-connected {
+      background-color: #2ecc71;
+    }
+    .status-disconnected {
+      background-color: #e74c3c;
+    }
+    .status-scheduled {
+      background-color: rgba(243, 156, 18, 0.3);
+      box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    }
+    /* Status indicator styles for the connection icons */
     .status-connected {
       background-color: rgba(0, 255, 0, 0.3);
       box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
@@ -63,6 +83,11 @@
     .status-disconnected {
       background-color: rgba(255, 0, 0, 0.3);
       box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+    }
+    
+    .status-scheduled {
+      background-color: rgba(243, 156, 18, 0.3);
+      box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
     }
     .stat {
       display: flex; flex-direction: column;
@@ -96,139 +121,223 @@
       padding:0.5em; width:90vw; margin:0 auto;
     }
     .item {
-      display:flex; align-items:center;
-      margin:0.5em auto; padding:0.5em;
-      border:1px solid #8000FF; border-radius:4px;
-      width:80vw;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5em;
+      border: 1px solid #8000FF;
+      border-radius: 0 4px 4px 0;
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      background: #000;
+      margin: 0;
+      box-sizing: border-box;
     }
-.item.tiktok-item { background: rgba(127,0,255,0.15); }
-.tiktok-gift-counting { color: #FF2222 !important; font-weight: bold; text-shadow: 0 0 6px #FF2222, 0 0 2px #fff; }
-
-/* Shake and light-up animation for stream events */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-  20%, 40%, 60%, 80% { transform: translateX(8px); }
-}
-@keyframes boxLight {
-  0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
-  100% { box-shadow: 0 0 0 #8000FF; }
-}
-.item.event-animate {
-  animation: flashPulse 1s cubic-bezier(.36,.07,.19,.97) both;
-  z-index: 2;
-}
-@keyframes flashPulse {
-  0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
-  40% { box-shadow: 0 0 32px 16px #FFD700, 0 0 0 #8000FF; }
-  80% { box-shadow: 0 0 12px 4px #8000FF, 0 0 0 #FFD700; }
-  100% { box-shadow: 0 0 0 #8000FF; }
-}
-
-/* Ensure animations don't affect structure */
-.event-animate {
-  position: relative;
-  z-index: 2;
-}
-
-
-    .item.twitch-item, .item.youtube-item, .item.tiktok-item { background: #000; } /* All events pure black */
-
-/* Provider icon box styling */
-.event-row {
-  display: flex;
-  align-items: stretch;
-  width: 80vw;
-  max-width: 900px;
-  margin: 0.5em auto;
-  box-sizing: border-box;
-  position: relative;
-  z-index: 1;
-}
-.provider-icon-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #8000FF;
-  border-radius: 6px 0 0 6px;
-  width: 44px;
-  min-width: 44px;
-  margin-right: 0;
-  margin-left: 0;
-  height: auto;
-  z-index: 3; /* Ensure it's above animations */
-  position: relative; /* Needed for z-index to work */
-}
-.provider-icon-box img {
-  width: 28px;
-  height: 28px;
-  filter: none;
-}
-
-.item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 0.5em;
-  border: 1px solid #8000FF;
-  border-radius: 0 4px 4px 0;
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  background: #000;
-  margin: 0;
-  box-sizing: border-box;
-}
+    .item .left-content {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .item .right-content {
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+      white-space: nowrap;
+    }
     .avatar { width:36px; height:36px; border-radius:50%; margin-right:0.5em; }
     .username { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-right:0.5em; }
     .details { text-align:right; font-size:0.9em; white-space:nowrap; }
-/* make TikTok gift pics small again */
-.details img.icon {
-  width: 24px;
-  height: 24px;
+/* make TikTok gift pics slightly wider and better centered in the event boxes */
+.details img.icon, .gift-icon, .details img, img.gift-icon, .item img, #feed img {
+  width: 32px !important;
+  height: 32px !important;
   margin-right: 0.5em;
-}
-/* full-screen white flash */
-#bladeFlashOverlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: white;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 9999;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  object-fit: contain !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
 }
 
-/* three quick scale-pulses */
-@keyframes pulseScale {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.05); }
+/* Catch any remaining images in the overlay */
+#overlay img, .overlay img {
+  max-width: 32px !important;
+  max-height: 32px !important;
+  width: auto !important;
+  height: auto !important;
+  vertical-align: middle !important;
 }
+    /* Clickable YouTube icon styles */
+    .platform-icon-container.clickable {
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.2s ease;
+      user-select: none;
+    }
+    
+    .platform-icon-container.clickable:hover {
+      transform: scale(1.05);
+      filter: brightness(1.2);
+    }
+    
+    .platform-icon-container.clickable:active {
+      transform: scale(0.95);
+      transition: transform 0.05s ease;
+    }
+    
+    /* Loading animation for YouTube icon */
+    @keyframes youtubeLoading {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    
+    .platform-icon-container.loading .platform-icon-inline {
+      animation: youtubeLoading 1s ease-in-out infinite;
+    }
+    
+    .platform-icon-container.loading .connection-status {
+      background-color: rgba(255, 165, 0, 0.4);
+      box-shadow: 0 0 12px rgba(255, 165, 0, 0.6);
+    }
+    
+    /* Loading animation for Twitch icon */
+    @keyframes twitchLoading {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    
+    .platform-icon-container.twitch-loading .platform-icon-inline {
+      animation: twitchLoading 1s ease-in-out infinite;
+    }
+    
+    .platform-icon-container.twitch-loading .connection-status {
+      background-color: rgba(147, 83, 255, 0.4);
+      box-shadow: 0 0 12px rgba(147, 83, 255, 0.6);
+    }
+    
+    /* Enhanced status transitions */
+    .connection-status {
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
 
-/* single white "blade pull" flash */
-@keyframes bladeFlashAnim {
-  0%   { opacity: 1; }
-  20%  { opacity: 0.6; }
-  100% { opacity: 0; }
-}
+    /* full-screen white flash */
+    #bladeFlashOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
 
-.flashPulse {
-  /* position:relative so the pseudo-flash is confined here */
-  position: relative;
-  animation: pulseScale 0.333s ease-in-out 0s 3 both;
-}
+    /* three quick scale-pulses */
+    @keyframes pulseScale {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.05); }
+    }
 
-/* use a pseudo-element to flash just this item */
-.flashPulse::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: white;
-  pointer-events: none;
-  opacity: 0;
-  animation: bladeFlashAnim 1s ease-in-out 0s 1 both;
-}
+    /* single white "blade pull" flash */
+    @keyframes bladeFlashAnim {
+      0%   { opacity: 1; }
+      20%  { opacity: 0.6; }
+      100% { opacity: 0; }
+    }
 
+    .flashPulse {
+      /* position:relative so the pseudo-flash is confined here */
+      position: relative;
+      animation: pulseScale 0.333s ease-in-out 0s 3 both;
+    }
+
+    /* use a pseudo-element to flash just this item */
+    .flashPulse::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: white;
+      pointer-events: none;
+      opacity: 0;
+      animation: bladeFlashAnim 1s ease-in-out 0s 1 both;
+    }
+
+    .item.tiktok-item { background: rgba(127,0,255,0.15); }
+    .tiktok-gift-counting { color: #FF2222 !important; font-weight: bold; text-shadow: 0 0 6px #FF2222, 0 0 2px #fff; }
+
+    /* Shake and light-up animation for stream events */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+      20%, 40%, 60%, 80% { transform: translateX(8px); }
+    }
+    @keyframes boxLight {
+      0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
+      100% { box-shadow: 0 0 0 #8000FF; }
+    }
+    .item.event-animate {
+      animation: flashPulse 1s cubic-bezier(.36,.07,.19,.97) both;
+      z-index: 2;
+    }
+    @keyframes flashPulse {
+      0% { box-shadow: 0 0 24px 8px #fff, 0 0 0 #8000FF; }
+      40% { box-shadow: 0 0 32px 16px #FFD700, 0 0 0 #8000FF; }
+      80% { box-shadow: 0 0 12px 4px #8000FF, 0 0 0 #FFD700; }
+      100% { box-shadow: 0 0 0 #8000FF; }
+    }
+
+    /* Ensure animations don't affect structure */
+    .event-animate {
+      position: relative;
+      z-index: 2;
+    }
+
+    .item.twitch-item, .item.youtube-item, .item.tiktok-item { background: #000; } /* All events pure black */
+
+    /* Provider icon box styling */
+    .event-row {
+      display: flex;
+      align-items: stretch;
+      width: 80vw;
+      max-width: 900px;
+      margin: 0.5em auto;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 1;
+    }
+    .provider-icon-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #8000FF;
+      border-radius: 6px 0 0 6px;
+      width: 44px;
+      min-width: 44px;
+      margin-right: 0;
+      margin-left: 0;
+      height: auto;
+      z-index: 3; /* Ensure it's above animations */
+      position: relative; /* Needed for z-index to work */
+    }
+    .provider-icon-box img {
+      width: 28px;
+      height: 28px;
+      filter: none;
+    }
+
+    .avatar { width:36px; height:36px; border-radius:50%; margin-right:0.5em; }
+    .gift-membership {
+      min-height: 44px;
+    }
+    .superchat {
+      min-height: 44px;
+    }
+    .supersticker {
+      min-height: 44px;
+    }
   </style>
 </head>
 <body>
@@ -245,28 +354,28 @@
       <div class="stat"><label>Likes:</label><span id="tiktokLikes">0</span></div>
     </div>
     <div class="platform-row">
-      <div class="platform-icon-container">
+      <div class="platform-icon-container clickable twitch-icon">
         <div class="connection-status status-disconnected" id="twitch-status"></div>
         <img class="platform-icon-inline" src="https://www.twitch.tv/favicon.ico" alt="Twitch" />
       </div>
-      <div class="stat"><label>Viewers:</label><span id="twitchViewers">0</span></div>
+      <div class="stat"><label>Viewers:</label><span id="twitchViewers">–</span></div>
       <div class="stat"><label>Follows:</label><span id="twitchFollows">0</span></div>
       <div class="stat"><label>Subs:</label><span id="twitchSubs">0</span></div>
       <div class="stat"><label>Bits:</label><span id="twitchBits">0</span></div>
       <div class="stat"><label>Raids:</label><span id="twitchRaids">0</span></div>
     </div>
     <div class="platform-row">
-      <div class="platform-icon-container">
+      <div class="platform-icon-container clickable youtube-icon">
         <div class="connection-status status-disconnected" id="youtube-status"></div>
         <img class="platform-icon-inline" src="https://www.youtube.com/favicon.ico" alt="YouTube" />
       </div>
       <div class="stat"><label>Viewers:</label><span id="ytViewers">–</span></div>
-      <div class="stat"><label>Subscribers:</label><span id="ytSubscribers">–</span></div>
+      <div class="stat"><label>Subscribers:</label><span id="ytSubscribers">0</span></div>
       <div class="stat"><label>Members:</label><span id="ytMembers">0</span></div>
       <div class="stat"><label>SuperChats:</label><span id="ytSuperchats">0</span></div>
       <div class="stat polling">
-        <button id="ytPollBtn">Start YouTube</button>
-        <button id="ytStopBtn">Stop YouTube</button>
+        <button id="ytPollBtn" style="display: none;">Start YouTube</button>
+        <button id="ytStopBtn" style="display: none;">Stop YouTube</button>
       </div>
     </div>
   </div>
@@ -275,189 +384,233 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script>
 (async () => {
+  // Load both config and OAuth tokens
   const CONFIG = await window.electron.ipcRenderer.invoke('load-config');
+  let TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
 
-  console.log('▶ Overlay loaded', CONFIG);
-  
-  // Set up YouTube polling button handlers
-  $('#ytPollBtn').on('click', function() {
-    // Enable YouTube polling
-    sessionStorage.setItem('youtubePollingEnabled', 'true');
-    $(this).text('YouTube Started');
-    $('#ytStopBtn').prop('disabled', false);
-    
-    // Initialize YouTube live chat ID
-    initLiveChatId();
-    
-    // Immediately fetch stats
-    fetchStats();
-    
-    console.log('▶ YouTube polling enabled');
-  });
-  
-  $('#ytStopBtn').on('click', function() {
-    // Disable YouTube polling
-    sessionStorage.setItem('youtubePollingEnabled', 'false');
-    $('#ytPollBtn').text('Start YouTube');
-    $('#ytViewers').text('–');
-    $(this).prop('disabled', true);
-    
-    // Update connection status
-    updateConnectionStatus('youtube', false);
-    
-    console.log('▶ YouTube polling disabled');
-  });
-  
-  // Initialize button state based on session storage
-  if (sessionStorage.getItem('youtubePollingEnabled') === 'true') {
-    $('#ytPollBtn').text('YouTube Started');
-    $('#ytStopBtn').prop('disabled', false);
-  } else {
-    $('#ytPollBtn').text('Start YouTube');
-    $('#ytStopBtn').prop('disabled', true);
-    $('#ytViewers').text('–');
-  }
-  
-  // Connection status tracking
-  const connectionStatus = {
-    tiktok: false,
-    twitch: false,
-    youtube: false
-  };
-  
-  // Function to update connection status indicators
-  function updateConnectionStatus(service, isConnected) {
-    connectionStatus[service] = isConnected;
-    const statusElement = document.getElementById(`${service}-status`);
-    if (statusElement) {
-      if (isConnected) {
-        statusElement.classList.remove('status-disconnected');
-        statusElement.classList.add('status-connected');
-        console.log(`▶ ${service.toUpperCase()} connected`);
-      } else {
-        statusElement.classList.remove('status-connected');
-        statusElement.classList.add('status-disconnected');
-        console.log(`▶ ${service.toUpperCase()} disconnected`);
-      }
-    }
-  }
+  // Initialization flag to prevent operations during startup
+  let isInitialized = false;
 
-  // Immediately check Twitch status on page load
-  (function checkTwitchStatus() {
-    if (CONFIG.TWITCH_CLIENT_ID && (CONFIG.TWITCH_OAUTH || CONFIG.TWITCH_APP_TOKEN)) {
-      // Call fetchTwitchStatus immediately
-      fetchTwitchStatus();
-    }
-  })();
+  // YouTube service state tracking
+  let youtubeServiceRunning = false;
+  let youtubeServiceLoading = false;
 
-  // — fetch the live chat ID for the current stream —
-  let ytLiveChatId = null;
-  const ytSuperchatRevenue = {};  // store micros per currency
+  // Twitch service state tracking
+  let twitchServiceRunning = false;
+  let twitchServiceLoading = false;
 
-  // Initialize YouTube Live Chat ID only when needed, not automatically
-  function initLiveChatId() {
-    // Only fetch if YouTube polling is enabled
-    if (sessionStorage.getItem('youtubePollingEnabled') !== 'true') {
-      console.log('▶ YouTube polling is disabled. Not fetching live chat ID.');
+  // Get YouTube icon container for click handling
+  const youtubeIconContainer = document.querySelector('.platform-icon-container.clickable.youtube-icon');
+  const youtubeStatusElement = document.getElementById('youtube-status');
+
+  // Get Twitch icon container for click handling
+  const twitchIconContainer = document.querySelector('.platform-icon-container.clickable.twitch-icon');
+  const twitchStatusElement = document.getElementById('twitch-status');
+
+  // YouTube icon click handler
+  youtubeIconContainer.addEventListener('click', async () => {
+    if (!isInitialized) {
+      console.log('[Overlay] System still initializing, please wait...');
       return;
     }
     
-    console.log('▶ Fetching YouTube live chat ID...');
+    if (youtubeServiceLoading) {
+      console.log('[Overlay] YouTube service operation in progress, ignoring click');
+      return;
+    }
+
+    console.log(`[Overlay] YouTube icon clicked - Current state: ${youtubeServiceRunning ? 'running' : 'stopped'}`);
     
-    // Add a timestamp parameter to avoid caching issues
-    const timestamp = new Date().getTime();
-    fetch(
-      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}&_t=${timestamp}`
-    )
-    .then(r=>{
-      if (!r.ok) {
-        throw new Error(`YouTube API returned status ${r.status}`);
-      }
-      return r.json();
-    })
-    .then(d=>{
-      if (d.error) {
-        throw new Error(`YouTube API error: ${d.error.message || JSON.stringify(d.error)}`);
-      }
+    if (youtubeServiceRunning) {
+      // Stop YouTube service
+      await stopYouTubeService();
+    } else {
+      // Start YouTube service
+      await startYouTubeService();
+    }
+  });
+
+  // Twitch icon click handler
+  twitchIconContainer.addEventListener('click', async () => {
+    if (!isInitialized) {
+      console.log('[Overlay] System still initializing, please wait...');
+      return;
+    }
+    
+    if (twitchServiceLoading) {
+      console.log('[Overlay] Twitch service operation in progress, ignoring click');
+      return;
+    }
+
+    if (twitchServiceRunning) {
+      await stopTwitchService();
+    } else {
+      await startTwitchService();
+    }
+  });
+
+  // Start YouTube service function
+  async function startYouTubeService() {
+    console.log('[Overlay] Starting YouTube service...');
+    setYouTubeLoading(true);
+    
+    try {
+      const result = await window.electron.ipcRenderer.invoke('youtube-service-start');
       
-      if (d.items?.length) {
-        ytLiveChatId = d.items[0].snippet.liveChatId;
-        // If we got a live chat ID, YouTube is connected
+      if (result && result.success) {
+        console.log('✅ [Overlay] YouTube service started successfully');
+        youtubeServiceRunning = true;
         updateConnectionStatus('youtube', true);
-        console.log('▶ YouTube live chat ID fetched successfully');
       } else {
-        console.log('▶ No YouTube live chat ID found');
+        console.error('❌ [Overlay] Failed to start YouTube service:', result?.error || 'Unknown error');
+        youtubeServiceRunning = false;
         updateConnectionStatus('youtube', false);
       }
-    })
-    .catch(error => {
-      console.error('YouTube API error:', error);
+    } catch (error) {
+      console.error('❌ [Overlay] Error starting YouTube service:', error);
+      youtubeServiceRunning = false;
       updateConnectionStatus('youtube', false);
+    } finally {
+      setYouTubeLoading(false);
+    }
+  }
+
+  // Stop YouTube service function
+  async function stopYouTubeService() {
+    console.log('[Overlay] Stopping YouTube service...');
+    setYouTubeLoading(true);
+    
+    try {
+      await window.electron.ipcRenderer.invoke('youtube-service-stop');
+      console.log('✅ [Overlay] YouTube service stopped successfully');
+      youtubeServiceRunning = false;
+      updateConnectionStatus('youtube', false);
+    } catch (error) {
+      console.error('❌ [Overlay] Error stopping YouTube service:', error);
+      // Still mark as stopped even if there was an error
+      youtubeServiceRunning = false;
+      updateConnectionStatus('youtube', false);
+    } finally {
+      setYouTubeLoading(false);
+    }
+  }
+
+  // Start Twitch service function
+  async function startTwitchService() {
+    console.log('[Overlay] Starting Twitch service...');
+    setTwitchLoading(true);
+    
+    try {
+      const result = await window.electron.ipcRenderer.invoke('twitch-service-start');
       
-      // If we get a quota exceeded error, disable YouTube polling
-      if (error.message && (error.message.includes('quota') || error.message.includes('403'))) {
-        console.error('▶ YouTube API quota exceeded. Disabling YouTube polling.');
-        sessionStorage.setItem('youtubePollingEnabled', 'false');
-        $('#ytPollBtn').text('Start YouTube (Quota Exceeded)');
+      if (result && result.success) {
+        console.log('✅ [Overlay] Twitch service started successfully');
+        twitchServiceRunning = true;
+        updateConnectionStatus('twitch', true);
+      } else {
+        console.log('⚠️ [Overlay] Twitch service start - no explicit success response, waiting for status update');
+        // Don't set to connected here - let the connection status listener handle it
       }
-    });
+    } catch (error) {
+      console.error('❌ [Overlay] Error starting Twitch service:', error);
+      twitchServiceRunning = false;
+      updateConnectionStatus('twitch', false);
+    } finally {
+      setTwitchLoading(false);
+    }
   }
+
+  // Stop Twitch service function
+  async function stopTwitchService() {
+    console.log('[Overlay] Stopping Twitch service...');
+    setTwitchLoading(true);
+    
+    try {
+      await window.electron.ipcRenderer.invoke('twitch-service-stop');
+      console.log('✅ [Overlay] Twitch service stopped successfully');
+      twitchServiceRunning = false;
+      updateConnectionStatus('twitch', false);
+    } catch (error) {
+      console.error('❌ [Overlay] Error stopping Twitch service:', error);
+      // Still mark as stopped even if there was an error
+      twitchServiceRunning = false;
+      updateConnectionStatus('twitch', false);
+    } finally {
+      setTwitchLoading(false);
+    }
+  }
+
+  // Set loading state for YouTube icon
+  function setYouTubeLoading(loading) {
+    youtubeServiceLoading = loading;
+    if (loading) {
+      youtubeIconContainer.classList.add('loading');
+    } else {
+      youtubeIconContainer.classList.remove('loading');
+    }
+  }
+
+  // Set loading state for Twitch icon
+  function setTwitchLoading(loading) {
+    twitchServiceLoading = loading;
+    if (loading) {
+      twitchIconContainer.classList.add('twitch-loading');
+    } else {
+      twitchIconContainer.classList.remove('twitch-loading');
+    }
+  }
+
+  // Update existing button handlers to sync with icon state
+  document.getElementById('ytPollBtn').addEventListener('click', async () => {
+    if (youtubeServiceLoading || youtubeServiceRunning) return;
+    await startYouTubeService();
+  });
+
+  document.getElementById('ytStopBtn').addEventListener('click', async () => {
+    if (youtubeServiceLoading || !youtubeServiceRunning) return;
+    await stopYouTubeService();
+  });
+
+  // Only log that overlay is loaded without exposing sensitive config values
   
-  // Don't automatically initialize - wait for button click
+  // Set up YouTube polling button handlers
+  $('#ytPollBtn').on('click', async function() {
+    sessionStorage.setItem('youtubePollingEnabled', 'true');
+    $(this).prop('disabled', true);
+    $('#ytStopBtn').prop('disabled', false);
 
-
-  function addItem({avatar,name,html,provider}) {
-    // Favicons for each provider
-    const favicons = {
-      twitch: 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png',
-      youtube: 'https://www.youtube.com/favicon.ico', // Use ICO directly which is more reliable
-      tiktok: 'https://www.tiktok.com/favicon.ico',
-    };
-    // Simple favicon image function
-    function faviconImg(provider) {
-      return `<img src='${favicons[provider]||favicons.tiktok}' alt='${provider}'>`;
+    // Start the YouTube service via IPC
+    try {
+      await window.electron.ipcRenderer.invoke('youtube-service-start');
+      updateConnectionStatus('youtube', true);
+    } catch (error) {
+      console.error('Failed to start YouTube service:', error);
+      updateConnectionStatus('youtube', false);
     }
-    const $it = $(
-      `<div class="event-row">
-        <div class='provider-icon-box'>${faviconImg(provider)}</div>
-        <div class="item ${provider}-item">
-          <img class="avatar" src="${avatar}" alt="">
-          <div class="username">${name}</div>
-          <div class="details">${html}</div>
-        </div>
-      </div>`
-    );
-    const $feed = $('.feed');
-    $feed.append($it);
-    // Always scroll to bottom after adding
-    $feed.each(function() { this.scrollTop = this.scrollHeight; });
-
-    // Limit to 30 most recent events
-    while ($feed.children('.event-row').length > 30) {
-      $feed.children('.event-row').first().remove();
+  });
+  
+  $('#ytStopBtn').on('click', async function() {
+    sessionStorage.setItem('youtubePollingEnabled', 'false');
+    $(this).prop('disabled', true);
+    $('#ytPollBtn').prop('disabled', false);
+    $('#ytViewers').text('–');
+    updateConnectionStatus('youtube', false);
+    
+    // Stop the YouTube service via IPC
+    try {
+      await window.electron.ipcRenderer.invoke('youtube-service-stop');
+    } catch (error) {
+      console.error('Failed to stop YouTube service:', error);
     }
-
-    // Animate the new event
-    $it.find('.item').addClass('flashPulse');
-    $it.addClass('event-animate flashPulse');
-    setTimeout(() => {
-      $it.removeClass('event-animate flashPulse');
-    }, 1000);
-  }
-
+  });
 
   // Stats fetch
-  const twCid = CONFIG.TW_SE_CID;
-  const twToken = CONFIG.TW_SE_JWT;
-  const ytCid = CONFIG.YT_SE_CID;
-  const ytToken = CONFIG.YT_SE_JWT;
   let ytStatsInterval;
 
   document.getElementById('ytPollBtn').addEventListener('click', () => {
     if (ytStatsInterval) return;  // only start once
-    console.log('▶ Overlay YT polling started');
-    fetchStats();
-    ytStatsInterval = setInterval(fetchStats, 60000);
+    // ytStatsInterval replaced with individual polling for Twitch and YouTube if needed.
+    // Example: setInterval(fetchYouTubeStats, 60000); // Uncomment if polling is required
     updateConnectionStatus('youtube', true);
   });
   
@@ -465,172 +618,1416 @@
     if (!ytStatsInterval) return;
     clearInterval(ytStatsInterval);
     ytStatsInterval = null;
-    console.log('▶ Overlay YT polling stopped');
     updateConnectionStatus('youtube', false);
   });
 
-  const lastGiftStats = {};
   
   // Set up the interval for regular updates (every 60 seconds)
-  // Don't automatically call fetchStats on page load - wait for button click
-  setInterval(fetchStats, 60000); // Every minute
+  // Don't automatically call polling on page load - wait for button click
+  // setInterval(fetchTwitchStatus, 60000); // Uncomment if periodic polling needed
+// setInterval(fetchYouTubeStats, 60000); // Uncomment if periodic polling needed
 
-  // Function to check Twitch status independently
-  async function fetchTwitchStatus() {
+  // Function to ensure we have a valid Twitch token
+  async function ensureTwitchToken() {
+    if (!TOKENS.twitch || !TOKENS.twitch.access_token) {
+      console.error('No Twitch token available');
+      return false;
+    }
+
     try {
-      // Make sure we have valid credentials before making the API call
-      if(!CONFIG.TWITCH_CLIENT_ID) {
-        console.error('Missing Twitch Client ID');
+      const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+      
+      if (refreshed) {
+        // Get the updated tokens
+        TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+        return true;
+      } else {
+        console.error('Failed to refresh Twitch token');
         updateConnectionStatus('twitch', false);
-        return;
+        return false;
       }
-      
-      // Check for token and log what we have
-      if(!CONFIG.TWITCH_OAUTH && !CONFIG.TWITCH_APP_TOKEN) {
-        console.error('Missing both TWITCH_OAUTH and TWITCH_APP_TOKEN');
-        updateConnectionStatus('twitch', false);
-        return;
-      }
-      
-      // Prefer TWITCH_OAUTH over TWITCH_APP_TOKEN if available
-      let token = CONFIG.TWITCH_OAUTH || CONFIG.TWITCH_APP_TOKEN;
-      
-      // Clean the token - remove oauth: prefix if present
-      token = token.replace(/^oauth:/, '');
-      
-      console.log(`Checking Twitch connection with token starting with: ${token.substring(0, 5)}...`);
-      
-      const response = await fetch(
-        `https://api.twitch.tv/helix/users?login=${CONFIG.TWITCH_CHANNEL}`,
-        {
-          headers: {
-            'Client-ID': CONFIG.TWITCH_CLIENT_ID,
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      if (!response.ok) {
-        console.error(`Twitch API error: ${response.status} ${response.statusText}`);
-        updateConnectionStatus('twitch', false);
-        return;
-      }
-      
-      // If we got here, the API call was successful
-      updateConnectionStatus('twitch', true);
-      
-    } catch(e) {
-      console.error('Twitch API check error', e);
+    } catch (error) {
+      console.error('Error refreshing Twitch token:', error);
       updateConnectionStatus('twitch', false);
+      return false;
+    }
+
+    // Validate the token and get client ID
+    try {
+      const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+        headers: { 'Authorization': `OAuth ${TOKENS.twitch.access_token}` }
+      });
+      
+      if (!validateResponse.ok) {
+        console.error('Twitch token validation failed:', validateResponse.status);
+        
+        // Try to get more detailed error information
+        try {
+          const errorText = await validateResponse.text();
+          console.error('▶ [DEBUG] Error response:', errorText);
+        } catch (e) {
+          console.error('▶ [DEBUG] Could not read error response:', e);
+        }
+        
+        // Try to refresh the token
+        try {
+          const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+          if (refreshed) {
+            TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+            } else {
+            console.error('▶ [DEBUG] Token refresh failed. User may need to re-authenticate with Twitch');
+          }
+        } catch (refreshError) {
+          console.error('▶ [DEBUG] Error during token refresh:', refreshError);
+        }
+        return false;
+      }
+      
+      const validateData = await validateResponse.json();
+      if (!validateData.scopes.includes('channel:read:subscriptions')) {
+        console.error('Missing Twitch token scopes: channel:read:subscriptions');
+        console.error('Available scopes:', validateData.scopes.join(', '));
+        console.error('Please re-authenticate with the correct scopes');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error validating Twitch token:', error);
+      updateConnectionStatus('twitch', false);
+      return false;
     }
   }
 
-  async function fetchStats(){
-    if(twCid && twToken){
-      try {
-        // Make sure we have valid credentials before making the API call
-        if(!CONFIG.TWITCH_CLIENT_ID) {
-          console.error('Missing Twitch Client ID');
-          $('#twitchViewers').text('0');
-          updateConnectionStatus('twitch', false);
-          throw new Error('Missing Twitch Client ID');
-        }
-        
-        // Check for token and log what we have
-        if(!CONFIG.TWITCH_OAUTH && !CONFIG.TWITCH_APP_TOKEN) {
-          console.error('Missing both TWITCH_OAUTH and TWITCH_APP_TOKEN');
-          $('#twitchViewers').text('0');
-          updateConnectionStatus('twitch', false);
-          throw new Error('Missing Twitch token');
-        }
-        
-        // Prefer TWITCH_OAUTH over TWITCH_APP_TOKEN if available
-        let token = CONFIG.TWITCH_OAUTH || CONFIG.TWITCH_APP_TOKEN;
-        
-        // Clean the token - remove oauth: prefix if present
-        token = token.replace(/^oauth:/, '');
-        
-        console.log(`Fetching Twitch stream info with token starting with: ${token.substring(0, 5)}...`);
-        
-        const response = await fetch(
-          `https://api.twitch.tv/helix/streams?user_login=${CONFIG.TWITCH_CHANNEL}`,
-          {
-            headers: {
-              'Client-ID': CONFIG.TWITCH_CLIENT_ID,
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-        
-        if (!response.ok) {
-          console.error(`Twitch API error: ${response.status} ${response.statusText}`);
-          console.error(`Headers used: Client-ID: ${CONFIG.TWITCH_CLIENT_ID.substring(0, 5)}..., Token: ${token.substring(0, 5)}...`);
-          $('#twitchViewers').text('API Error');
-          updateConnectionStatus('twitch', false);
-          throw new Error(`Twitch API request failed with status ${response.status}`);
-        }
-        
-        // If we got here, the API call was successful
-        updateConnectionStatus('twitch', true);
-        
-        const helix = await response.json();
-        const viewers = helix.data[0]?.viewer_count || 0;
-        $('#twitchViewers').text(viewers);
-      } catch(e) {
-        console.error('Twitch Helix error', e);
-        updateConnectionStatus('twitch', false);
+  // Function to get Twitch channel info for the authenticated user
+  async function getTwitchChannelInfo() {
+    try {
+      // Make sure we have a token
+      if (!TOKENS.twitch || !TOKENS.twitch.access_token) {
+        console.error('No Twitch token available for channel info');
+        return null;
       }
-    } else {
-      updateConnectionStatus('twitch', false);
-    }
-    
-    if(ytCid && ytToken){
-      try {
-        // Check if we should make the API call based on the YouTube polling state
-        const youtubePollingEnabled = sessionStorage.getItem('youtubePollingEnabled') === 'true';
+      
+      // Validate the token to get the user login and ID
+      const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+        headers: {
+          'Authorization': `OAuth ${TOKENS.twitch.access_token}`
+        }
+      });
+      
+      if (!validateResponse.ok) {
+        console.error(`Token validation failed: ${validateResponse.status}`);
         
-        if (!youtubePollingEnabled) {
-          console.log('▶ YouTube polling is disabled. Enable it by clicking the Start YouTube button.');
-          $('#ytViewers').text('–');
-          updateConnectionStatus('youtube', false);
+        // Try to get more detailed error information
+        try {
+          const errorText = await validateResponse.text();
+          console.error('▶ [DEBUG] Error response:', errorText);
+        } catch (e) {
+          console.error('▶ [DEBUG] Could not read error response:', e);
+        }
+        
+        // Try to refresh the token
+        try {
+          const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+          if (refreshed) {
+            TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+          } else {
+            console.error('▶ [DEBUG] Token refresh failed. User may need to re-authenticate with Twitch');
+          }
+        } catch (refreshError) {
+          console.error('▶ [DEBUG] Error during token refresh:', refreshError);
+        }
+        return null;
+      }
+      
+      const validateData = await validateResponse.json();
+      // Store channel ID if we don't have it yet
+      if (!twitchChannelId) {
+        twitchChannelId = validateData.user_id;
+        twitchChannelName = validateData.login.toLowerCase();
+        }
+      
+      // Return the user info directly from the validation response
+      return {
+        id: validateData.user_id,
+        login: validateData.login,
+        display_name: validateData.login
+      };
+      
+      const data = await response.json();
+      
+      if (!data.data || !data.data.length) {
+        console.error('No valid Twitch channel info available in response');
+        return null;
+      }
+      
+      const userInfo = data.data[0];
+      return {
+        id: userInfo.id,
+        login: userInfo.login,
+        display_name: userInfo.display_name,
+        profile_image_url: userInfo.profile_image_url,
+        broadcaster_type: userInfo.broadcaster_type
+      };
+    } catch (error) {
+      console.error('Error in getTwitchChannelInfo:', error);
+      return null;
+    }
+  }
+
+  // Function to get Twitch stream info
+  async function getTwitchStreamInfo() {
+    try {
+      // Make sure we have a token
+      if (!TOKENS.twitch || !TOKENS.twitch.access_token) {
+        return { success: false, error: 'No Twitch token available' };
+      }
+      
+      // First get the user info to get the channel ID
+      const channelInfo = await getTwitchChannelInfo();
+      if (!channelInfo || !channelInfo.id) {
+        return { success: false, error: 'Could not get channel ID' };
+      }
+      
+      // Return success with channel info, even if we can't check live status
+      return {
+        success: true,
+        live: false,  // Default to not live
+        channelId: channelInfo.id,
+        channelName: channelInfo.login
+      };
+    } catch (error) {
+      console.error('Error in getTwitchStreamInfo:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Enhanced polling for Twitch events
+  let lastFollowersCheck = 0;
+  let lastSubscribersCheck = 0;
+  let lastBitsCheck = 0;
+  
+  // Twitch event counters
+  let tF = 0, tS = 0, tB = 0, tR = 0;
+  
+  // Timestamps for last API checks
+  // We're using the tracking sets defined earlier in the code
+  
+  // Function to set up enhanced Twitch polling and direct chat monitoring
+  async function setupEnhancedTwitchPolling(channel) {
+    try {
+      // Validate channel
+      if (!channel) {
+        console.error('▶ No channel specified for Twitch polling');
+        return false;
+      }
+      
+      // Initialize the polling system
+      // Clear any existing polling intervals
+      if (window.twitchEventsInterval) {
+        clearInterval(window.twitchEventsInterval);
+      }
+      
+      // Set up polling intervals for different event types
+      // Poll every 10 seconds for new followers, subscribers, bits, and channel point redemptions
+      window.twitchEventsInterval = setInterval(async () => {
+        if (!twitchConnected) return;
+        
+        try {
+          // Check for new followers
+          await checkNewFollowers();
+          
+          // Check for new subscribers
+          await checkNewSubscribers();
+          
+          // Check for gift subscriptions
+          await checkGiftSubscriptions();
+          
+          // Check for new bits/cheers via Helix API
+          await checkNewBits();
+          
+          // Check for new channel point redemptions
+          await checkChannelPointRedemptions();
+        } catch (error) {
+          console.error('Error in Twitch polling:', error);
+        }
+      }, 10000);
+      
+      // Set up direct Twitch chat WebSocket connection for real-time events
+      connectToTwitchChat();
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting up Twitch polling:', error);
+      return false;
+    }
+  }
+  
+  // Variables for Twitch chat WebSocket
+  let twitchChatReconnectTimeout = null;
+  
+  // Function to parse IRC messages from Twitch chat
+  function parseIrcMessage(rawMessage) {
+    try {
+      // Handle PING messages to keep the connection alive
+      if (rawMessage.startsWith('PING')) {
+        twitchChatSocket.send('PONG :tmi.twitch.tv');
+        return;
+      }
+      
+      // Skip empty messages
+      if (!rawMessage || rawMessage.trim() === '') {
+        return;
+      }
+      
+      // Parse the message
+      const messageParts = rawMessage.split(' ');
+      
+      // Extract tags if present
+      let tags = {};
+      if (messageParts[0].startsWith('@')) {
+        const tagPart = messageParts[0].substring(1);
+        const tagPairs = tagPart.split(';');
+        
+        for (const pair of tagPairs) {
+          const [key, value] = pair.split('=');
+          tags[key] = value;
+        }
+        
+        // Remove the tags part from the message
+        messageParts.shift();
+      }
+      
+      // Handle different message types
+      if (messageParts.indexOf('PRIVMSG') > -1) {
+        // Chat message
+        const channelIndex = messageParts.indexOf('PRIVMSG');
+        const channel = messageParts[channelIndex + 1].substring(1);
+        
+        // Extract username
+        const usernamePart = messageParts[0];
+        const username = usernamePart.substring(1, usernamePart.indexOf('!'));
+        
+        // Extract message content
+        const messageContent = messageParts.slice(channelIndex + 2).join(' ').substring(1);
+        
+        // Check for bits in the message
+        if (tags.bits) {
+          // Handle bits event using the standard Twitch event handler
+          handleTwitchEvent('bits', {
+            username: username,
+            displayName: tags['display-name'] || username,
+            id: tags.id,
+            userId: tags['user-id'],
+            avatar: tags['user-id'] ? `https://static-cdn.jtvnw.net/jtv_user_pictures/${tags['user-id']}-profile_image-300x300.png` : '',
+            bits: parseInt(tags.bits),
+            amount: parseInt(tags.bits),
+            message: messageContent
+          });
+        }
+        
+        // Check for channel point redemptions in the custom-reward-id tag
+        // This is a special case where channel point redemptions appear in chat messages
+        if (tags['custom-reward-id']) {
+          // Create a unique ID for this redemption
+          const redemptionId = `${tags['custom-reward-id']}-${tags.id}`;
+          
+          // Skip if we've already processed this redemption
+          if (knownRedemptions.has(redemptionId)) return;
+          knownRedemptions.add(redemptionId);
+          
+          // Get reward name if possible or use a default
+          const rewardTitle = tags['msg-param-reward-title'] || tags['custom-reward-title'] || 'Channel Point Reward';
+          
+          // Update redemption counter
+          tR++; $('#twitchRedemptions').text(tR);
+          
+          // Add item to the feed
+          addItem({
+            avatar: tags['user-id'] ? `https://static-cdn.jtvnw.net/jtv_user_pictures/${tags['user-id']}-profile_image-300x300.png` : '',
+            name: tags['display-name'] || username,
+            html: `Redeemed <span class="highlight">${rewardTitle}</span>: ${messageContent}`,
+            provider: 'twitch'
+          });
+          
+          // Log the event for debugging
+          }
+      } else if (messageParts.indexOf('USERNOTICE') > -1) {
+        // Subscription, raid, or other special events
+        const channelIndex = messageParts.indexOf('USERNOTICE');
+        const channel = messageParts[channelIndex + 1].substring(1);
+        
+        // Extract message content if any
+        let messageContent = '';
+        if (messageParts.length > channelIndex + 2) {
+          messageContent = messageParts.slice(channelIndex + 2).join(' ').substring(1);
+        }
+        
+        // Handle different types of user notices
+        const msgId = tags['msg-id'];
+        
+        if (msgId === 'sub' || msgId === 'resub') {
+          // Subscription or resubscription
+          // Update subscription counter
+          tS++; $('#twitchSubs').text(tS);
+          
+          // Get avatar URL
+          const avatarUrl = tags['user-id'] ? 
+            `https://static-cdn.jtvnw.net/jtv_user_pictures/${tags['user-id']}-profile_image-300x300.png` : 
+            '';
+          
+          // Use handleTwitchEvent to process the subscription
+          handleTwitchEvent('subscription', {
+            username: tags.login,
+            displayName: tags['display-name'],
+            avatar: avatarUrl,
+            months: parseInt(tags['msg-param-cumulative-months'] || '1'),
+            message: messageContent,
+            isGift: false,
+            tier: tags['msg-param-sub-plan'] || '1000'
+          });
+          
+          // Log the event
+          } else if (msgId === 'subgift' || msgId === 'anonsubgift') {
+          // Gift subscription
+          // Update subscription counter
+          tS++; $('#twitchSubs').text(tS);
+          
+          // Get gifter and recipient names
+          const gifter = tags['display-name'] || 'Anonymous';
+          const recipient = tags['msg-param-recipient-display-name'] || tags['msg-param-recipient-user-name'] || 'Someone';
+          
+          // Get avatar URL for the gifter - use a more reliable format
+          let avatarUrl = '';
+          if (tags['user-id']) {
+            // First try the more reliable format
+            avatarUrl = `https://static-cdn.jtvnw.net/user-profile-pictures/${tags['user-id']}-profile_image-300x300.png`;
+            } else {
+            // Use Twitch favicon as fallback
+            avatarUrl = 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png';
+            }
+          
+          // Use handleTwitchEvent to process the gift subscription
+          handleTwitchEvent('subscription', {
+            username: tags['msg-param-recipient-user-name'],
+            displayName: recipient,
+            avatar: avatarUrl,
+            gifter: gifter,
+            gifterDisplayName: gifter,
+            isGift: true,
+            message: messageContent,
+            tier: tags['msg-param-sub-plan'] || '1000'
+          });
+          
+          // DIRECT FEED UPDATE - Ensure the gift sub appears in the feed
+          try {
+            // Add directly to the feed as a backup method
+            const $feed = $('.feed');
+            const $item = $(`<div class="event-row">
+              <div class='provider-icon-box'><img src='https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png' alt='twitch'></div>
+              <div class="item twitch-item">
+                <img class="avatar" src="${avatarUrl}" alt="">
+                <div class="username">${gifter}</div>
+                <div class="details">GIFT SUB to ${recipient}</div>
+              </div>
+            </div>`);
+            $feed.append($item);
+            $feed.each(function() { this.scrollTop = this.scrollHeight; });
+            
+            // Limit to 30 most recent events
+            while ($feed.children('.event-row').length > 30) {
+              $feed.children('.event-row').first().remove();
+            }
+          } catch (error) {
+            console.error('▶ Error adding gift sub directly to feed:', error);
+          }
+          
+          // Log the event
+          } else if (msgId === 'raid') {
+          // Raid event
+          // Handle raid event
+          handleTwitchEvent('raid', {
+            username: tags.login,
+            displayName: tags['display-name'],
+            avatar: '',
+            viewers: parseInt(tags['msg-param-viewerCount'] || '0')
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing IRC message:', error, rawMessage);
+    }
+  }
+  
+  // Function to check for new followers
+  async function checkNewFollowers() {
+    try {
+      if (!twitchConnected || !twitchChannelId || !TOKENS?.twitch?.access_token) return;
+      
+      // Only check if it's been at least 10 seconds since the last check
+      const now = Date.now();
+      if (now - lastFollowersCheck < 10000) return;
+      lastFollowersCheck = now;
+      
+      // Get the client ID from the validated token if possible
+      const clientId = TOKENS.twitch.client_id || validatedClientId;
+      
+      // Get the latest followers using the recent followers endpoint
+      const followersResponse = await fetch(`https://api.twitch.tv/helix/channels/followers/recent?broadcaster_id=${twitchChannelId}&first=10`, {
+        headers: {
+          'Client-ID': clientId,
+          'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+        }
+      });
+      
+      if (!followersResponse.ok) {
+        console.error(`▶ Failed to fetch followers: ${followersResponse.status}`);
+        
+        // Try to get more detailed error information
+        try {
+          const errorText = await followersResponse.text();
+          console.error('▶ [DEBUG] Error response:', errorText);
+        } catch (e) {
+          console.error('▶ [DEBUG] Could not read error response:', e);
+        }
+        
+        return;
+      }
+      
+      const followersData = await followersResponse.json();
+      // Initialize knownFollowers if this is the first run
+      if (knownFollowers.size === 0) {
+        // First run - just store all known followers without triggering events
+        if (followersData.data && followersData.data.length > 0) {
+          for (const follower of followersData.data) {
+            knownFollowers.add(follower.user_id);
+          }
+        }
+        return;
+      }
+      
+      // Process new followers (only on subsequent checks)
+      if (followersData.data && followersData.data.length > 0) {
+        // Only process followers from the last 5 minutes to avoid old follows appearing as new
+        const fiveMinutesAgo = now - (5 * 60 * 1000);
+        
+        // Sort followers by followed_at date to process oldest first
+        // This ensures we don't trigger multiple events out of order
+        const sortedFollowers = [...followersData.data].sort((a, b) => {
+          return new Date(a.followed_at).getTime() - new Date(b.followed_at).getTime();
+        });
+        
+        for (const follower of sortedFollowers) {
+          const followerId = follower.user_id;
+          const followedAt = new Date(follower.followed_at).getTime();
+          
+          // Check if this is a new follower we haven't seen before AND it's recent
+          if (!knownFollowers.has(followerId) && followedAt > fiveMinutesAgo) {
+            // Add to known followers BEFORE processing to prevent duplicates
+            knownFollowers.add(followerId);
+            
+            // Handle the follower event
+            // Update follower counter
+            tF++; $('#twitchFollows').text(tF);
+            
+            // Add to event feed
+            addItem({
+              avatar: `https://static-cdn.jtvnw.net/jtv_user_pictures/${followerId}-profile_image-300x300.png`,
+              name: follower.user_login,
+              html: 'FOLLOWED',
+              provider: 'twitch'
+            });
+            
+            // Log the event
+            } else if (!knownFollowers.has(followerId)) {
+            // Add to known followers without triggering an event if it's old
+            knownFollowers.add(followerId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for new followers:', error);
+    }
+  }
+  
+  // Function to check for new subscribers
+  async function checkNewSubscribers() {
+    try {
+      if (!twitchConnected || !twitchChannelId) {
+        return;
+      }
+      
+      // Only check if it's been at least 10 seconds since the last check
+      const now = Date.now();
+      if (!window.lastSubscribersCheck) window.lastSubscribersCheck = 0;
+      if (now - window.lastSubscribersCheck < 10000) {
+        return;
+      }
+      window.lastSubscribersCheck = now;
+      
+      // First, validate that we have the required scope
+      try {
+        const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+          headers: { 'Authorization': `OAuth ${TOKENS.twitch.access_token}` }
+        });
+        
+        if (!validateResponse.ok) {
+          console.error(`▶ [DEBUG] Token validation failed: ${validateResponse.status}`);
+          
+          // Try to get more detailed error information
+          try {
+            const errorText = await validateResponse.text();
+            console.error('▶ [DEBUG] Token validation error response:', errorText);
+          } catch (e) {
+            console.error('▶ [DEBUG] Could not read token validation error response:', e);
+          }
+          
+          // Try to refresh the token
+          try {
+            const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+            if (refreshed) {
+              TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+              } else {
+              console.error('▶ [DEBUG] Token refresh failed. User may need to re-authenticate with Twitch');
+            }
+          } catch (refreshError) {
+            console.error('▶ [DEBUG] Error during token refresh:', refreshError);
+          }
           return;
         }
         
-        console.log('▶ Fetching YouTube viewer count...');
+        const validateData = await validateResponse.json();
+        if (!validateData.scopes.includes('channel:read:subscriptions')) {
+          console.error('▶ [DEBUG] Missing required scope: channel:read:subscriptions');
+          console.error('▶ [DEBUG] Available scopes:', validateData.scopes.join(', '));
+          console.error('▶ [DEBUG] Please re-authenticate with the correct scopes');
+          return;
+        }
         
-        // Add a timestamp parameter to avoid caching issues
-        const timestamp = new Date().getTime();
-        const yt = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${CONFIG.YT_STREAM_ID}&key=${CONFIG.YT_API_KEY}&_t=${timestamp}`
-        ).then(r => {
-          if (!r.ok) {
-            throw new Error(`YouTube API returned status ${r.status}`);
+        // Client ID is already hardcoded, no need to set it from validation
+        
+      } catch (error) {
+        console.error('▶ [DEBUG] Error validating token:', error);
+        return;
+      }
+      
+      // Get the latest subscribers
+      // Increased from 10 to 100 to avoid missing subscribers
+      try {
+        const subsResponse = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${twitchChannelId}&first=100`, {
+          headers: {
+            'Client-ID': validatedClientId,
+            'Authorization': `Bearer ${TOKENS.twitch.access_token}`
           }
-          return r.json();
         });
         
-        if (yt.error) {
-          throw new Error(`YouTube API error: ${yt.error.message || JSON.stringify(yt.error)}`);
+        if (!subsResponse.ok) {
+          console.error(`▶ [DEBUG] Failed to fetch subscribers: ${subsResponse.status} ${subsResponse.statusText}`);
+          
+          // Try to get more detailed error information
+          try {
+            const errorText = await subsResponse.text();
+            console.error('▶ [DEBUG] Error response body:', errorText);
+          } catch (e) {
+            console.error('▶ [DEBUG] Could not read error response body:', e);
+          }
+          
+          if (subsResponse.status === 401 || subsResponse.status === 403) {
+            console.error('▶ [DEBUG] Missing required scope: channel:read:subscriptions. Please re-authenticate with this scope.');
+          }
+          return;
         }
         
-        const live = yt.items?.[0]?.liveStreamingDetails;
-        const viewers = live?.concurrentViewers || 0;
-        $('#ytViewers').text(viewers);
-        updateConnectionStatus('youtube', true);
-      } catch(e) {
-        console.error('YouTube Data API error:', e);
-        $('#ytViewers').text('API Error');
-        updateConnectionStatus('youtube', false);
+        const subsData = await subsResponse.json();
+        // Debug: Log sample subscription data
+        if (subsData.data && subsData.data.length > 0) {
+          // Log a few more samples if available
+          if (subsData.data.length > 1) {
+            }
+        } else {
+          }
         
-        // If we get a quota exceeded error, disable YouTube polling
-        if (e.message && (e.message.includes('quota') || e.message.includes('403'))) {
-          console.error('▶ YouTube API quota exceeded. Disabling YouTube polling.');
-          sessionStorage.setItem('youtubePollingEnabled', 'false');
-          $('#ytPollBtn').text('Start YouTube (Quota Exceeded)');
+        // Process new subscribers (excluding gift subs which are handled separately)
+        if (subsData.data && subsData.data.length > 0) {
+          // Filter out gift subscriptions which are handled by checkGiftSubscriptions
+          const directSubs = subsData.data.filter(sub => sub.is_gift !== true);
+          // Log gift vs non-gift counts
+          const giftSubs = subsData.data.filter(sub => sub.is_gift === true);
+          // Get the current timestamp
+          const currentTime = Date.now();
+          
+          // Initialize knownSubscribers if not already done
+          if (!window.knownSubscribers) {
+            window.knownSubscribers = new Set();
+            }
+          
+          // Debug: Log some known subscribers if any exist
+          if (window.knownSubscribers.size > 0) {
+            }
+          
+          for (const sub of directSubs) {
+            // Create a unique ID for this subscription that doesn't include time
+            // This helps prevent duplicate events across sessions
+            const subId = `${sub.user_id}-${sub.tier}`;
+            
+            // Check if this is a new subscriber we haven't seen before
+            if (!window.knownSubscribers.has(subId)) {
+              window.knownSubscribers.add(subId);
+              // Update subscription counter
+              tS++; $('#twitchSubs').text(tS);
+              // Add to event feed
+              addItem({
+                avatar: sub.user_id ? `https://static-cdn.jtvnw.net/jtv_user_pictures/${sub.user_id}-profile_image-300x300.png` : '',
+                name: sub.user_name,
+                html: `SUBSCRIBED (Tier ${sub.tier.replace('1000', '1').replace('2000', '2').replace('3000', '3')})`,
+                provider: 'twitch'
+              });
+              
+              // Log the event
+              } else {
+              }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for new subscribers:', error);
+      }
+    } catch (error) {
+      console.error('Error checking for new subscribers:', error);
+    }
+  }
+  
+  // Function to check for gift subscriptions
+  async function checkGiftSubscriptions() {
+    try {
+      if (!twitchConnected || !twitchChannelId) {
+        return;
+      }
+      
+      // Only check if it's been at least 10 seconds since the last check
+      const now = Date.now();
+      // Using a separate timestamp for gift subs
+      if (!window.lastGiftSubsCheck) window.lastGiftSubsCheck = 0;
+      if (now - window.lastGiftSubsCheck < 10000) {
+        return;
+      }
+      window.lastGiftSubsCheck = now;
+      
+      // First, validate that we have the required scope
+      try {
+        const validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+          headers: { 'Authorization': `OAuth ${TOKENS.twitch.access_token}` }
+        });
+        
+        if (!validateResponse.ok) {
+          console.error(`▶ [DEBUG-GIFT] Token validation failed: ${validateResponse.status}`);
+          
+          // Try to get more detailed error information
+          try {
+            const errorText = await validateResponse.text();
+            console.error('▶ [DEBUG-GIFT] Token validation error response:', errorText);
+          } catch (e) {
+            console.error('▶ [DEBUG-GIFT] Could not read token validation error response:', e);
+          }
+          
+          // Try to refresh the token
+          try {
+            const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+            if (refreshed) {
+              TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+              } else {
+              console.error('▶ [DEBUG-GIFT] Token refresh failed. User may need to re-authenticate with Twitch');
+            }
+          } catch (refreshError) {
+            console.error('▶ [DEBUG-GIFT] Error during token refresh:', refreshError);
+          }
+          return;
+        }
+        
+        const validateData = await validateResponse.json();
+        if (!validateData.scopes.includes('channel:read:subscriptions')) {
+          console.error('▶ [DEBUG-GIFT] Missing required scope: channel:read:subscriptions');
+          console.error('▶ [DEBUG-GIFT] Available scopes:', validateData.scopes.join(', '));
+          console.error('▶ [DEBUG-GIFT] Please re-authenticate with the correct scopes');
+          return;
+        }
+        
+        // Client ID is already hardcoded, no need to set it from validation
+        
+      } catch (error) {
+        console.error('▶ [DEBUG-GIFT] Error validating token:', error);
+        return;
+      }
+      
+      // Get recent gift subscriptions using the subscriptions endpoint
+      try {
+        const subsResponse = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${twitchChannelId}&first=100`, {
+          headers: {
+            'Client-ID': validatedClientId,
+            'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+          }
+        });
+        
+        if (!subsResponse.ok) {
+          console.error(`▶ [DEBUG-GIFT] Failed to fetch gift subscriptions: ${subsResponse.status} ${subsResponse.statusText}`);
+          
+          // Try to get more detailed error information
+          try {
+            const errorText = await subsResponse.text();
+            console.error('▶ [DEBUG-GIFT] Error response body:', errorText);
+          } catch (e) {
+            console.error('▶ [DEBUG-GIFT] Could not read error response body:', e);
+          }
+          
+          if (subsResponse.status === 401 || subsResponse.status === 403) {
+            console.error('▶ [DEBUG-GIFT] Missing required scope: channel:read:subscriptions. Please re-authenticate with this scope.');
+          }
+          return;
+        }
+        
+        const subsData = await subsResponse.json();
+        // Debug: Log all subscription data to see what we're getting
+        if (subsData.data && subsData.data.length > 0) {
+          // Log a few more samples if available
+          if (subsData.data.length > 1) {
+            }
+        } else {
+          }
+        
+        // Process gift subscriptions
+        if (subsData.data && subsData.data.length > 0) {
+          // Filter for gift subscriptions only
+          const giftSubs = subsData.data.filter(sub => sub.is_gift === true);
+          // Debug: Log gift subscription details
+          if (giftSubs.length > 0) {
+            } else {
+            }
+          
+          // Get the current timestamp
+          const currentTime = Date.now();
+          
+          // Initialize knownGiftSubs if not already done
+          if (!window.knownGiftSubs) {
+            window.knownGiftSubs = new Set();
+            }
+          
+          // Debug: Log some known gift subs if any exist
+          if (window.knownGiftSubs.size > 0) {
+            }
+          
+          for (const sub of giftSubs) {
+            // Create a unique ID for this gift subscription
+            // Include recipient ID, gifter ID, and tier to make it unique
+            // DO NOT include time in the ID to avoid duplicates across sessions
+            const giftSubId = `gift-${sub.user_id}-${sub.gifter_id || 'anonymous'}-${sub.tier}`;
+            
+            // Check if this is a new gift subscription we haven't seen before
+            if (!window.knownGiftSubs.has(giftSubId)) {
+              const gifterName = sub.gifter_name || 'Anonymous';
+              const recipientName = sub.user_name;
+              
+              window.knownGiftSubs.add(giftSubId);
+              // Update subscription counter
+              tS++; $('#twitchSubs').text(tS);
+              // Add to event feed
+              addItem({
+                avatar: sub.gifter_id ? `https://static-cdn.jtvnw.net/jtv_user_pictures/${sub.gifter_id}-profile_image-300x300.png` : '',
+                name: gifterName,
+                html: `GIFT SUB to ${recipientName} (Tier ${sub.tier.replace('1000', '1').replace('2000', '2').replace('3000', '3')})`,
+                provider: 'twitch'
+              });
+              
+              // Log the event
+              } else {
+              }
+          }
+        }
+      } catch (error) {
+        console.error('▶ [DEBUG-GIFT] Error in gift subscription API call:', error);
+      }
+    } catch (error) {
+      console.error('Error checking for gift subscriptions:', error);
+    }
+  }
+  
+  // Function to check for new bits/cheers
+  async function checkNewBits() {
+    try {
+      if (!twitchConnected || !twitchChannelId) return;
+      
+      // Only check if it's been at least 10 seconds since the last check
+      const now = Date.now();
+      if (now - lastBitsCheck < 10000) return;
+      lastBitsCheck = now;
+      
+      // Get bits leaderboard to check for recent cheers
+      // Note: This API doesn't provide individual cheer events directly
+      // but we can use it to detect new cheers by comparing with previous state
+      const bitsResponse = await fetch(`https://api.twitch.tv/helix/bits/leaderboard?count=10`, {
+        headers: {
+          'Client-ID': validatedClientId,
+          'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+        }
+      });
+      
+      if (!bitsResponse.ok) {
+        // This might fail if the user doesn't have the right scopes
+        if (bitsResponse.status === 401) {
+          // Try to refresh the token
+          const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+          
+          if (refreshed) {
+            // Get the updated tokens
+            TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+          }
+        }
+        return;
+      }
+      
+      const bitsData = await bitsResponse.json();
+      // Initialize bits tracking if not already done
+      if (!window.previousBitsAmounts) {
+        window.previousBitsAmounts = new Map();
+      }
+      
+      // Process bits leaderboard entries
+      if (bitsData.data && bitsData.data.length > 0) {
+        for (const entry of bitsData.data) {
+          const userId = entry.user_id;
+          const userName = entry.user_name;
+          const currentScore = entry.score; // Total bits cheered
+          
+          // Check if we've seen this user before
+          const previousScore = window.previousBitsAmounts.get(userId) || 0;
+          
+          // If the current score is higher than the previous score, a new cheer happened
+          if (currentScore > previousScore) {
+            const bitsAmount = currentScore - previousScore;
+            
+            // Create a unique ID for this bits event
+            const bitsId = `${userId}_${bitsAmount}_${now}`;
+            
+            // Check if this is a new bits event we haven't seen before
+            if (!knownCheerers.has(bitsId)) {
+              knownCheerers.add(bitsId);
+              
+              // Update bits counter
+              tB += bitsAmount; $('#twitchBits').text(tB);
+              
+              // Add to event feed
+              addItem({
+                avatar: userId ? `https://static-cdn.jtvnw.net/jtv_user_pictures/${userId}-profile_image-300x300.png` : '',
+                name: userName,
+                html: `CHEERED <span style="color:#9C3EE8">${bitsAmount} bits</span>`,
+                provider: 'twitch'
+              });
+              
+              // Log the event
+              }
+          }
+          
+          // Update the previous score for this user
+          window.previousBitsAmounts.set(userId, currentScore);
         }
       }
-    } else {
-      updateConnectionStatus('youtube', false);
+      
+      // We also rely on the chat message parsing for bits detection
+      // as it provides more immediate feedback for individual cheer events
+    } catch (error) {
+      console.error('Error checking for new bits:', error);
+    }
+  }
+  
+  // Variable to track if channel points API is available
+  let channelPointsApiAvailable = true;
+  
+  // Function to check for new channel point redemptions
+  async function checkChannelPointRedemptions() {
+    try {
+      if (!twitchConnected || !twitchChannelId) return;
+      
+      // Skip if we've already determined the API is not available
+      if (!channelPointsApiAvailable) return;
+      
+      // Only check if it's been at least 10 seconds since the last check
+      const now = Date.now();
+      if (now - lastChannelPointsCheck < 10000) return;
+      lastChannelPointsCheck = now;
+      
+      // Get custom rewards for the channel
+      const rewardsResponse = await fetch(`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${twitchChannelId}`, {
+        headers: {
+          'Client-ID': validatedClientId,
+          'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+        }
+      });
+      
+      // Handle 403 Forbidden (missing scopes) by disabling this feature
+      if (rewardsResponse.status === 403) {
+        channelPointsApiAvailable = false;
+        return;
+      }
+      
+      if (!rewardsResponse.ok) {
+        return;
+      }
+      
+      const rewardsData = await rewardsResponse.json();
+      
+      // For each reward, check recent redemptions
+      if (rewardsData.data && rewardsData.data.length > 0) {
+        for (const reward of rewardsData.data) {
+          // Get recent redemptions for this reward
+          const redemptionsResponse = await fetch(`https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?broadcaster_id=${twitchChannelId}&reward_id=${reward.id}&status=FULFILLED&first=5`, {
+            headers: {
+              'Client-ID': validatedClientId,
+              'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+            }
+          });
+          
+          // Skip this reward if we get a 403 or other error
+          if (!redemptionsResponse.ok) {
+            continue;
+          }
+          
+          const redemptionsData = await redemptionsResponse.json();
+          
+          // First run - just store redemption IDs without triggering events
+          if (knownRedemptions.size === 0) {
+            if (redemptionsData.data && redemptionsData.data.length > 0) {
+              for (const redemption of redemptionsData.data) {
+                knownRedemptions.add(redemption.id);
+              }
+            }
+            continue;
+          }
+          
+          // Process new redemptions (only on subsequent checks)
+          if (redemptionsData.data && redemptionsData.data.length > 0) {
+            // Only process redemptions from the last 5 minutes
+            const fiveMinutesAgo = now - (5 * 60 * 1000);
+            
+            for (const redemption of redemptionsData.data) {
+              const redemptionId = redemption.id;
+              const redeemedAt = new Date(redemption.redeemed_at).getTime();
+              
+              // Check if this is a new redemption we haven't seen before AND it's recent
+              if (!knownRedemptions.has(redemptionId) && redeemedAt > fiveMinutesAgo) {
+                knownRedemptions.add(redemptionId);
+                
+                // Handle the redemption
+                handleChannelPointRedemption(
+                  redemption.user_name,
+                  redemption.user_name,
+                  reward.id,
+                  reward.title,
+                  redemption.user_input || ''
+                );
+              } else if (!knownRedemptions.has(redemptionId)) {
+                // Add to known redemptions without triggering an event if it's old
+                knownRedemptions.add(redemptionId);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for channel point redemptions:', error);
+    }
+  }
+  
+  // Function to handle channel point redemptions
+  function handleChannelPointRedemption(username, displayName, rewardId, rewardTitle, message) {
+    try {
+      // Create a unique ID for this redemption
+      const redemptionId = `${rewardId}-${Date.now()}`;
+      
+      // Skip if we've already processed this event
+      if (knownRedemptions.has(redemptionId)) return;
+      knownRedemptions.add(redemptionId);
+      
+      // Handle the redemption event (using the cheer event type for now)
+      handleTwitchEvent('cheer', {
+        username: username,
+        displayName: displayName,
+        avatar: '', // We don't get avatar in chat
+        bits: 0, // No bits for redemptions
+        message: `Redeemed ${rewardTitle}: ${message}`
+      });
+    } catch (error) {
+      console.error('Error handling channel point redemption:', error);
+    }
+  }
+  
+  // Helper function to handle subscription events
+  function handleSubscriptionEvent(username, userstate, message, isGift = false, months = 1, gifter = null) {
+    try {
+      // Create a unique ID for this subscription event
+      const subId = `${userstate['user-id'] || Date.now()}`;
+      
+      // Skip if we've already processed this event
+      if (knownSubscribers.has(subId)) return;
+      knownSubscribers.add(subId);
+      
+      // Determine tier
+      let tier = '1000'; // Default to Tier 1
+      if (userstate.plan === '2000') tier = '2000';
+      if (userstate.plan === '3000') tier = '3000';
+      
+      // Handle the subscription event
+      handleTwitchEvent('subscription', {
+        username: username,
+        displayName: userstate['display-name'] || username,
+        avatar: '', // We don't get avatar in chat
+        tier: tier,
+        isGift: isGift,
+        gifter: gifter,
+        months: months,
+        message: message || ''
+      });
+    } catch (error) {
+      console.error('Error handling subscription event:', error);
+    }
+  }
+  
+  // Helper function to handle bits events
+  function handleBitsEvent(userstate, message, bits) {
+    try {
+      // Create a unique ID for this bits event
+      const bitsId = `${userstate.id || Date.now()}`;
+      
+      // Skip if we've already processed this event
+      if (knownCheerers.has(bitsId)) return;
+      knownCheerers.add(bitsId);
+      
+      // Handle the bits event
+      handleTwitchEvent('cheer', {
+        username: userstate.username,
+        displayName: userstate['display-name'],
+        avatar: '', // We don't get avatar in chat
+        bits: bits,
+        message: message
+      });
+    } catch (error) {
+      console.error('Error handling bits event:', error);
+    }
+  }
+  
+  // Consolidated function to check all Twitch events (followers, subscriptions, bits)
+  async function checkTwitchEvents() {
+    // Check if we have the required data to make API calls
+    // Note: We're not relying on twitchConnected flag as it might not be in sync with actual token state
+    if (!TOKENS?.twitch?.access_token) {
+      return;
+    }
+    
+    try {
+      // First, explicitly validate the token to ensure it's valid and get the client ID
+      let validateData = null;
+      let validateResponse = null;
+      
+      try {
+        validateResponse = await fetch('https://id.twitch.tv/oauth2/validate', {
+          headers: {
+            'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+          }
+        });
+        
+        if (!validateResponse.ok) {
+          console.error(`Token validation failed: ${validateResponse.status}`);
+          
+          // Try to refresh the token
+          const refreshed = await window.electron.ipcRenderer.invoke('refresh-tokens', 'twitch');
+          
+          if (refreshed) {
+            // Get the updated tokens
+            TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+          }
+        }
+        validateData = await validateResponse.json();
+        
+      } catch (validateError) {
+        console.error('Error validating Twitch token:', validateError);
+        return;
+      }
+      
+      // Now we have a validated token, proceed with API calls
+      const now = Date.now();
+      
+      // Create common headers for all API requests with validated client ID
+      const headers = {
+        'Client-ID': validatedClientId,
+        'Authorization': `Bearer ${TOKENS.twitch.access_token}`
+      };
+      
+      // Log the headers we're using
+      // 1. CHECK FOR NEW FOLLOWERS
+      // Only check every 10 seconds to avoid API rate limits but catch follows quickly
+      if (now - lastFollowersCheck >= 10000) {
+        lastFollowersCheck = now;
+        try {
+          const followersResponse = await fetch(
+            `https://api.twitch.tv/helix/channels/followers?broadcaster_id=${twitchChannelId}&first=100`,
+            { headers }
+          );
+          
+          if (followersResponse.ok) {
+            const followersData = await followersResponse.json();
+            
+            if (followersData.data && Array.isArray(followersData.data)) {
+              // Sort followers by follow date (oldest first) to process in chronological order
+              // This ensures we don't trigger multiple events out of order
+              const sortedFollows = [...followersData.data].sort((a, b) => {
+                return new Date(a.followed_at).getTime() - new Date(b.followed_at).getTime();
+              });
+              
+              // Initialize knownFollowers set if it doesn't exist
+              if (!window.knownFollowers) {
+                window.knownFollowers = new Set();
+              }
+              
+              // On first run, just store all followers without triggering events
+              if (window.knownFollowers.size === 0) {
+                for (const follow of sortedFollows) {
+                  const followerKey = `follow-${follow.user_id}`;
+                  window.knownFollowers.add(followerKey);
+                }
+              } else {
+                let newFollowCount = 0;
+                
+                for (const follow of sortedFollows) {
+                  // Create a unique follower key based on user_id
+                  const followerKey = `follow-${follow.user_id}`;
+                  
+                  // Skip if we've already processed this follower
+                  if (window.knownFollowers.has(followerKey)) continue;
+                  
+                  // Add to known followers set before processing to prevent duplicates
+                  window.knownFollowers.add(followerKey);
+                  newFollowCount++;
+                  
+                  // Check if the follow is recent (within the last 5 minutes)
+                  const startupTime = window.startupTime || Date.now();
+                  const timeSinceStartup = now - startupTime;
+                  if (timeSinceStartup > 600000) {
+                    continue;
+                  }
+                  
+                  // Get user avatar using the centralized function
+                  let avatar = '';
+                  try {
+                    const userResponse = await fetch(
+                      `https://api.twitch.tv/helix/users?id=${follow.user_id}`,
+                      { headers }
+                    );
+                    
+                    if (userResponse.ok) {
+                      const userData = await userResponse.json();
+                      if (userData.data && userData.data.length > 0) {
+                        avatar = userData.data[0].profile_image_url;
+                      }
+                    }
+                  } catch (avatarError) {
+                    console.error('Error fetching follower avatar:', avatarError.message);
+                  }
+                  
+                  // Handle the follow event
+                  handleTwitchEvent('follow', {
+                    username: follow.user_login,
+                    displayName: follow.user_name,
+                    avatar: avatar
+                  });
+                }
+                
+                if (newFollowCount > 0) {
+                  }
+              }
+            } else {
+              console.error('▶ Invalid followers response format');
+            }
+          } else {
+            // If we get a 401 or 403, it might be a missing scope
+            if (followersResponse.status === 401 || followersResponse.status === 403) {
+              console.error(`▶ Twitch followers API error: ${followersResponse.status}. Make sure your token has the moderator:read:followers scope.`);
+            } else {
+              console.error(`▶ Twitch followers API error: ${followersResponse.status}`);
+            }
+          }
+        } catch (followerError) {
+          console.error('▶ Error checking Twitch followers:', followerError.message);
+        }
+      }
+      
+      // 2. CHECK FOR NEW SUBSCRIPTIONS
+      // Check less frequently than followers to avoid API rate limits
+      if (now - lastSubscribersCheck >= 60000) { // Every 60 seconds
+        lastSubscribersCheck = now;
+        // Check for required scope
+        if (!validateResponse.ok || !validateData || !validateData.scopes || !validateData.scopes.includes('channel:read:subscriptions')) {
+          console.error('▶ Missing required scope: channel:read:subscriptions');
+          console.error('▶ Skipping subscription check');
+        } else {
+          try {
+            const subsResponse = await fetch(
+              `https://api.twitch.tv/helix/subscriptions?broadcaster_id=${twitchChannelId}&first=20`,
+              { headers }
+            );
+            
+            if (subsResponse.ok) {
+              const subsData = await subsResponse.json();
+              
+              if (subsData.data && Array.isArray(subsData.data)) {
+                // On first run, just store all subscribers without triggering events
+                if (window.knownSubscribers.size === 0) {
+                  for (const sub of subsData.data) {
+                    const subKey = `${sub.user_id}-${sub.tier}`;
+                    window.knownSubscribers.add(subKey);
+                  }
+                } else {
+                  let newSubCount = 0;
+                  
+                  for (const sub of subsData.data) {
+                    // Skip if we've already processed this subscriber
+                    const subKey = `${sub.user_id}-${sub.tier}`;
+                    if (window.knownSubscribers.has(subKey)) continue;
+                    
+                    // Add to known subscribers set
+                    window.knownSubscribers.add(subKey);
+                    newSubCount++;
+                    
+                    // Only process subs from the last 10 minutes to avoid spam on startup
+                    const startupTime = window.startupTime || Date.now();
+                    const timeSinceStartup = now - startupTime;
+                    if (timeSinceStartup > 600000) {
+                      continue;
+                    }
+                    
+                    // Get user avatar using the centralized function
+                    let avatar = '';
+                    try {
+                      const userResponse = await fetch(
+                        `https://api.twitch.tv/helix/users?id=${sub.user_id}`,
+                        { headers }
+                      );
+                      
+                      if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        if (userData.data && userData.data.length > 0) {
+                          avatar = userData.data[0].profile_image_url;
+                        }
+                      }
+                    } catch (avatarError) {
+                      console.error('Error fetching subscriber avatar:', avatarError.message);
+                    }
+                    
+                    // Handle the subscription event
+                    handleTwitchEvent('subscription', {
+                      username: sub.user_login,
+                      displayName: sub.user_name,
+                      avatar: avatar,
+                      tier: sub.tier,
+                      isGift: sub.is_gift,
+                      months: parseInt(subsData.data[0].cumulative_months || '1')
+                    });
+                  }
+                  
+                  if (newSubCount > 0) {
+                    }
+                }
+              } else {
+                console.error('▶ Invalid subscriptions response format');
+              }
+            } else {
+              // If we get a 401 or 403, it might be a missing scope
+              if (subsResponse.status === 401 || subsResponse.status === 403) {
+                console.error(`▶ Twitch subscriptions API error: ${subsResponse.status}. Make sure your token has the channel:read:subscriptions scope.`);
+              } else {
+                console.error(`▶ Twitch subscriptions API error: ${subsResponse.status}`);
+              }
+            }
+          } catch (subsError) {
+            console.error('▶ Error checking Twitch subscriptions:', subsError.message);
+          }
+        }
+      }
+      
+       
+      // Clean up old entries if sets get too large
+      if (window.knownFollowers && window.knownFollowers.size > 1000) {
+        const oldestFollowers = Array.from(window.knownFollowers).slice(0, 200);
+        oldestFollowers.forEach(id => window.knownFollowers.delete(id));
+        }
+      
+      if (window.knownSubscribers && window.knownSubscribers.size > 1000) {
+        const oldestSubscribers = Array.from(window.knownSubscribers).slice(0, 200);
+        oldestSubscribers.forEach(id => window.knownSubscribers.delete(id));
+        }
+      
+      if (window.knownCheerers && window.knownCheerers.size > 1000) {
+        const oldestCheerers = Array.from(window.knownCheerers).slice(0, 200);
+        oldestCheerers.forEach(id => window.knownCheerers.delete(id));
+        }
+    } catch (error) {
+      console.error('▶ Error in consolidated Twitch events check:', error.message);
+      console.error('▶ Error stack:', error.stack);
+    }
+  }
+  
+  // Legacy function for backward compatibility - now just calls the consolidated function
+  async function checkTwitchFollowers() {
+    await checkTwitchEvents();
+  }
+  
+  // Legacy function for backward compatibility - now just calls the consolidated function
+  async function checkTwitchSubscriptions() {
+    await checkTwitchEvents();
+  }
+  
+  // Legacy function for backward compatibility - now just calls the consolidated function
+  async function checkTwitchBits() {
+    await checkTwitchEvents();
+  }
+  
+  // Handle Twitch events
+  async function processTwitchEvents() {
+    try {
+      // Ensure we have a token
+      if (!TOKENS?.twitch?.access_token) {
+        return;
+      }
+      
+      // Get channel ID if we don't have it
+      if (!twitchChannelId) {
+        const channelInfo = await getTwitchChannelInfo();
+        if (!channelInfo || !channelInfo.id) {
+          console.error('▶ Could not get Twitch channel ID');
+          return;
+        }
+        twitchChannelId = channelInfo.id;
+        }
+      
+      // Use the consolidated function to check for all Twitch events
+      try {
+        await checkTwitchEvents();
+        } catch (error) {
+        console.error('Error in checkTwitchEvents:', error);
+      }
+      
+      // Limit the size of our tracking sets to prevent memory issues
+      if (knownFollowers.size > 1000) {
+        const oldestFollowers = Array.from(knownFollowers).slice(0, 200);
+        oldestFollowers.forEach(id => knownFollowers.delete(id));
+      }
+      
+      if (knownSubscribers.size > 1000) {
+        const oldestSubscribers = Array.from(knownSubscribers).slice(0, 200);
+        oldestSubscribers.forEach(id => knownSubscribers.delete(id));
+      }
+      
+      if (knownCheerers.size > 1000) {
+        const oldestCheerers = Array.from(knownCheerers).slice(0, 200);
+        oldestCheerers.forEach(id => knownCheerers.delete(id));
+      }
+    } catch (error) {
+      console.error('Error processing Twitch events:', error);
     }
   }
 
@@ -644,13 +2041,11 @@
     // Track TikTok connection status
     tkWs.onopen = () => {
       updateConnectionStatus('tiktok', true);
-      console.log('▶ TikTok WebSocket connected');
-    };
+      };
     
     tkWs.onclose = () => {
       updateConnectionStatus('tiktok', false);
-      console.log('▶ TikTok WebSocket disconnected');
-    };
+      };
     
     tkWs.onerror = (error) => {
       updateConnectionStatus('tiktok', false);
@@ -659,7 +2054,6 @@
 
     tkWs.onmessage = e => {
       const m = JSON.parse(e.data);
-      console.log('▶ TikTok raw event:', m);
       const d = m.data;
       if (m.event === 'roomUser') {
         $('#tiktokViewers').text(d.viewerCount);
@@ -669,14 +2063,49 @@
         tF++; $('#tiktokFollows').text(tF);
         addItem({ avatar: d.profilePictureUrl, name: d.uniqueId, html: 'FOLLOWED', provider: 'tiktok' });
       } else if (m.event === 'subscribe' || m.event === 'subscription') {
+        // Log the full subscription data for debugging
+        // Check if this is a gift subscription based on the protobuff data structure
+        // According to Tikfinity devs, gift subs have old_subscribe_status.value = 1
+        const isGiftSub = d.old_subscribe_status && 
+                         d.old_subscribe_status.value === 1 && 
+                         d.subscribe_message_type === null;
+        
+        // Check for explicit gift type indicators
+        const hasExplicitGiftType = (d.giftType === 1 && d.senderUniqueId);
+        
+        // Check for receiver-only gift (older method)
         const isReceiverOnlyGift = !d.giftType && d.receiverUniqueId;
-        if ((d.giftType === 1 && d.senderUniqueId) || isReceiverOnlyGift) {
+        
+        // Check for SubWaveEvent pattern as mentioned in the screenshot
+        const hasSubWaveEvent = d.event_type === 'SubWaveEvent' || 
+                              (d.base_message && d.base_message.serialized_on_wire === true);
+        
+        // Check for thanks list pattern as mentioned in the screenshot
+        const hasThanksListIndicator = d.subscribing_status && 
+                                     d.subscribing_status.name === 'SUBSCRIBING_STATUS_CIRCLE' && 
+                                     d.subscribing_status.value === 2;
+        
+        if (isGiftSub || hasExplicitGiftType || isReceiverOnlyGift || hasSubWaveEvent || hasThanksListIndicator) {
+          // This is a gift subscription
           const recv = d.receiverUniqueId || d.uniqueId;
-          const from  = d.senderUniqueId || '(unknown sender)';
-          addItem({ avatar: d.senderProfilePictureUrl || d.profilePictureUrl, name: from, html: `GIFT SUB from ${from} → ${recv}`, provider: 'tiktok' });
+          const from = d.senderUniqueId || '(unknown sender)';
+          
+          addItem({ 
+            avatar: d.senderProfilePictureUrl || d.profilePictureUrl, 
+            name: from, 
+            html: `GIFT SUB from ${from} → ${recv}`, 
+            provider: 'tiktok' 
+          });
         } else {
-          addItem({ avatar: d.profilePictureUrl, name: d.uniqueId, html: 'NEW SUB', provider: 'tiktok' });
+          // Regular subscription
+          addItem({ 
+            avatar: d.profilePictureUrl, 
+            name: d.uniqueId, 
+            html: 'NEW SUB', 
+            provider: 'tiktok' 
+          });
         }
+        
         tS++; $('#tiktokSubs').text(tS);
       } else if (m.event === 'gift') {
         // Only show after stacking is complete for Type 1 gifts
@@ -714,282 +2143,376 @@
     updateConnectionStatus('tiktok', false);
   }
 
-  // StreamElements Astro WS (Twitch & YouTube)
-  try {
-    let astro;
-    let astroReconnectTimeout = null;
-    let astroReconnectAttempts = 0;
-    let giftQueue = null;
-    let twitchSubscribed = false;
-    let youtubeSubscribed = false;
+  window.electron.ipcRenderer.on('twitch-connection-status', (event, data) => {
+    console.log('[Overlay] Received Twitch connection status update:', data);
+    const status = data.connectionStatus !== undefined ? data.connectionStatus : data;
+    updateConnectionStatus('twitch', status);
+    if (status === true) {
+      twitchServiceRunning = true;
+    } else {
+      twitchServiceRunning = false;
+    }
+  });
 
-    function connectAstroWS() {
-      astro = new WebSocket('wss://astro.streamelements.com');
-      console.log('▶ Attempting to connect to StreamElements Astro WS...');
-
-      astro.onopen = () => {
-        console.log('▶ StreamElements Astro WS connected');
-        astroReconnectAttempts = 0;
-        // Send subscription requests for Twitch and YouTube
-        if (twCid && twToken) {
-          astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:twCid,token:twToken,token_type:'jwt'}}));
-        } else {
-          console.log('▶ Twitch credentials missing, not subscribing to Twitch events');
-        }
-        if (ytCid && ytToken) {
-          astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:ytCid,token:ytToken,token_type:'jwt'}}));
-        } else {
-          console.log('▶ YouTube credentials missing, not subscribing to YouTube events');
-        }
-      };
-
-      astro.onclose = () => {
-        console.log('▶ StreamElements Astro WS closed');
-        if (twitchSubscribed) updateConnectionStatus('twitch', false);
-        if (youtubeSubscribed) updateConnectionStatus('youtube', false);
-        twitchSubscribed = false;
-        youtubeSubscribed = false;
-        scheduleAstroReconnect();
-      };
-
-      astro.onerror = (error) => {
-        console.error('▶ StreamElements Astro WS error:', error);
-        if (twitchSubscribed) updateConnectionStatus('twitch', false);
-        if (youtubeSubscribed) updateConnectionStatus('youtube', false);
-        scheduleAstroReconnect();
-      };
-
-      astro.onmessage = e => {
-        try {
-          const m = JSON.parse(e.data);
-          console.log('▶ Astro raw event:', m);
-          // Check for subscription confirmations
-          if (m.type === 'reply' && m.data?.topic === 'channel.activities') {
-            if (m.data?.room === twCid) {
-              twitchSubscribed = true;
-              updateConnectionStatus('twitch', true);
-              console.log('▶ Twitch events subscription confirmed');
-            } else if (m.data?.room === ytCid) {
-              youtubeSubscribed = true;
-              updateConnectionStatus('youtube', true);
-              console.log('▶ YouTube events subscription confirmed');
-            }
-            return;
-          }
-          if (m.type !== 'message' || m.topic !== 'channel.activities') return;
-          const {provider, type, data:p} = m.data;
-          if (provider === 'twitch') {
-            console.log('▶ [DEBUG] Twitch event:', type, JSON.stringify(p, null, 2));
-            if (type === 'follow') {
-              addItem({avatar:p.avatar, name:p.displayName||p.username, html:'FOLLOWED', provider});
-              $('#twitchFollows').text((+$('#twitchFollows').text()||0)+1);
-            } else if (type === 'channelPointsRedemption' || type === 'redemption') {
-              // Log the redemption payload for debugging
-              console.log('▶ [DEBUG] redemption payload:', JSON.stringify(p, null, 2));
-              
-              const user = p.displayName || p.username || p.userName || 'Unknown';
-              
-              // The redemption title is in the 'redemption' field (e.g., "Hey look, it's QI")
-              // Just display this directly without any additional text
-              const rewardTitle = p.redemption || '';
-              
-              // Only fall back to amount if there's no title
-              const displayText = rewardTitle || (p.amount ? `${p.amount} Channel Points` : 'Channel Points');
-              
-              // Special handling for "Highlight My Message"
-              const userMsg = p.redemption?.user_input || p.user_input || p.message || '';
-              
-              if (rewardTitle && rewardTitle.toLowerCase().includes('highlight my message')) {
-                addItem({avatar:p.avatar, name:user, html:`<span style='color:#FFD700'>HIGHLIGHTED: ${userMsg}</span>`, provider});
-              } else {
-                // Display JUST the title without "REDEEMED:" prefix
-                addItem({avatar:p.avatar, name:user, html:displayText, provider});
-              }
-            } else if (type === 'hypetrainStart') {
-              addItem({avatar:'', name:'HYPE TRAIN', html:`Level ${p.level} Started`, provider});
-            } else if (type === 'hypetrainProgress') {
-              addItem({avatar:'', name:'HYPE TRAIN', html:`Progress: ${p.progress}/${p.goal}`, provider});
-            } else if (type === 'hypetrainEnd') {
-              addItem({avatar:'', name:'HYPE TRAIN', html:`Ended at Level ${p.level}`, provider});
-            } else if (type === 'communityGiftPurchase') {
-              giftQueue = {gifter:p.displayName||p.username, avatar:p.avatar, remaining:p.amount};
-            } else if (type === 'subscription' || type === 'subscriber') {
-              if (giftQueue && giftQueue.remaining > 0) {
-                const recv = p.displayName||p.username;
-                addItem({avatar:giftQueue.avatar, name:giftQueue.gifter, html:`GIFTED SUB to ${recv}`, provider});
-                giftQueue.remaining--; 
-                if (giftQueue.remaining === 0) giftQueue = null;
-              } else {
-                addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
-              }
-              $('#twitchSubs').text((+$('#twitchSubs').text()||0)+1);
-            } else if (/tip|cheer/.test(type)) {
-              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`${p.bits||p.amount} bits`, provider});
-              $('#twitchBits').text((+$('#twitchBits').text()||0)+(p.bits||p.amount));
-            } else if (type === 'raid') {
-              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`RAID: ${p.amount}`, provider});
-              $('#twitchRaids').text((+$('#twitchRaids').text()||0)+1);
-            }
-          } else if (provider === 'youtube') {
-            console.log('▶ YouTube event:', type, p);
-            if (type === 'subscriber') {
-              addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
-              $('#ytSubscribers').text((+$('#ytSubscribers').text()||0)+1);
-            } else if (type === 'superchat') {
-              addItem({avatar:p.avatar, name:p.displayName||p.username, html:`SUPERCHAT: ${p.amount}`, provider});
-              $('#ytSuperchats').text((+$('#ytSuperchats').text()||0)+1);
-            } else if (type === 'sponsor') {
-              if (p.gifted) {
-                addItem({avatar:p.avatar, name:p.sender, html:`GIFTED MEMBERSHIP to ${p.displayName||p.username}`, provider});
-              } else {
-                addItem({avatar:p.avatar, name:p.displayName||p.username, html:'NEW MEMBER', provider});
-              }
-              $('#ytMembers').text((+$('#ytMembers').text()||0)+1);
-            }
-          }
-        } catch (err) {
-          console.error('Astro WS message handler error:', err);
-        }
-      };
+  window.electron.ipcRenderer.on('twitch-data-update', (event, data) => {
+    console.log('🔥 [Overlay] IPC LISTENER CALLED! Event received successfully!');
+    console.log('[Overlay] Received Twitch data update:', data);
+    
+    // Update viewer count
+    if (data.viewerCount !== undefined) {
+      document.getElementById('twitchViewers').textContent = data.viewerCount || '–';
     }
 
-    function scheduleAstroReconnect() {
-      if (astroReconnectTimeout) return; // Already scheduled
-      astroReconnectAttempts++;
-      const delay = Math.min(astroReconnectAttempts * 3000, 30000); // Exponential backoff up to 30s
-      console.warn(`▶ Astro WS reconnecting in ${delay / 1000}s (attempt ${astroReconnectAttempts})`);
-      astroReconnectTimeout = setTimeout(() => {
-        astroReconnectTimeout = null;
-        connectAstroWS();
-      }, delay);
+    // Process new events
+    if (data && data.events && data.events.length > 0) {
+      console.log(`[Overlay] Received ${data.events.length} Twitch events`);
+      data.events.forEach(event => {
+        console.log(`[Overlay] Processing Twitch event: ${event.type} from ${event.displayName || event.username}`);
+        
+        // FILTER OUT REGULAR CHAT MESSAGES
+        if (event.type === 'chat' || event.type === 'message') {
+          console.log(`[Overlay] FILTERING OUT Twitch chat message from ${event.displayName}`);
+          return; // Skip regular chat messages in overlay
+        }
+        
+// Map Twitch service event types to overlay event types
+let overlayEventType = event.type;
+if (event.type === 'follower') {
+  overlayEventType = 'follow'; // Map follower events to follow for handleTwitchEvent
+}
+
+console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`);
+        
+        // Prepare event data with proper mapping for handleTwitchEvent
+        const mappedEventData = {
+          ...event,
+          // Ensure avatar and displayName are available
+          avatar: event.author?.avatar || event.avatar || '',
+          displayName: event.author?.name || event.displayName || event.username || '',
+          // Map viewer count for raids
+          viewers: event.viewerCount || event.viewers || 0,
+          // Map bits amount for bits events
+          bits: event.amount || event.bits || 0
+        };
+        
+        // Pass the original event type from the API service
+        handleTwitchEvent(overlayEventType, mappedEventData);
+      });
+    } else {
+      console.log('[Overlay] No Twitch events to process');
     }
 
-    connectAstroWS();
-    
-    astro.onopen = () => {
-      console.log('▶ StreamElements Astro WS connected');
-      
-      // Send subscription requests for Twitch and YouTube
-      if (twCid && twToken) {
-        astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:twCid,token:twToken,token_type:'jwt'}}));
-      } else {
-        console.log('▶ Twitch credentials missing, not subscribing to Twitch events');
-      }
-      
-      if (ytCid && ytToken) {
-        astro.send(JSON.stringify({type:'subscribe',data:{topic:'channel.activities',room:ytCid,token:ytToken,token_type:'jwt'}}));
-      } else {
-        console.log('▶ YouTube credentials missing, not subscribing to YouTube events');
-      }
-    };
-    
-    astro.onclose = () => {
-      console.log('▶ StreamElements Astro WS closed');
-      if (twitchSubscribed) updateConnectionStatus('twitch', false);
-      if (youtubeSubscribed) updateConnectionStatus('youtube', false);
-      twitchSubscribed = false;
-      youtubeSubscribed = false;
-    };
-    
-    astro.onerror = (error) => {
-      console.error('▶ StreamElements Astro WS error:', error);
-      if (twitchSubscribed) updateConnectionStatus('twitch', false);
-      if (youtubeSubscribed) updateConnectionStatus('youtube', false);
-    };
-    
-    astro.onmessage = e => {
-      const m = JSON.parse(e.data);
-      console.log('▶ Astro raw event:', m);
-      
-      // Check for subscription confirmations
-      if (m.type === 'reply' && m.data?.topic === 'channel.activities') {
-        if (m.data?.room === twCid) {
-          twitchSubscribed = true;
-          updateConnectionStatus('twitch', true);
-          console.log('▶ Twitch events subscription confirmed');
-        } else if (m.data?.room === ytCid) {
-          youtubeSubscribed = true;
-          updateConnectionStatus('youtube', true);
-          console.log('▶ YouTube events subscription confirmed');
-        }
-        return;
-      }
-      
-      if (m.type !== 'message' || m.topic !== 'channel.activities') return;
-      
-      const {provider, type, data:p} = m.data;
-      
-      if (provider === 'twitch') {
-        console.log('▶ [DEBUG] Twitch event:', type, JSON.stringify(p, null, 2));
-        if (type === 'follow') {
-          addItem({avatar:p.avatar, name:p.displayName||p.username, html:'FOLLOWED', provider});
-          $('#twitchFollows').text((+$('#twitchFollows').text()||0)+1);
-        } else if (type === 'channelPointsRedemption' || type === 'redemption') {
-          console.log('▶ [DEBUG] redemption payload:', JSON.stringify(p, null, 2));
-          const user = p.displayName||p.username||p.userName||'Unknown';
-          let rewardTitle = p.redemption?.reward?.title || p.reward?.title || p.reward?.name || p.rewardTitle || p.rewardName || p.title || '';
-          let rewardAmount = p.redemption?.reward?.cost || p.reward?.cost || p.amount || '';
-          let rewardDisplay = rewardTitle;
-          if (rewardAmount && rewardTitle) rewardDisplay += ` (${rewardAmount} points)`;
-          else if (rewardAmount) rewardDisplay = `${rewardAmount} Channel Points`;
+    // Update connection status
+    updateConnectionStatus('twitch', data.connectionStatus);
+  });
 
-          // Special handling for "Highlight My Message"
-          const userMsg = p.redemption?.user_input || p.user_input || p.message || '';
-          if (rewardTitle && rewardTitle.toLowerCase().includes('highlight my message')) {
-            // Show the user's highlighted message
-            addItem({avatar:p.avatar, name:user, html:`<span style='color:#FFD700'>HIGHLIGHTED: ${userMsg}</span>`, provider});
+  // Function to handle YouTube events and add them to the feed
+  function handleYouTubeEvent(eventType, eventData) {
+    console.log(`[Overlay] Handling YouTube event: ${eventType}`, eventData);
+    console.log(`[Overlay] Avatar: "${eventData.avatar}", DisplayName: "${eventData.displayName}", Username: "${eventData.username}"`);
+    
+    let html = '';
+    let displayName = eventData.displayName || eventData.username || 'Unknown User';
+    
+    console.log(`[Overlay] Final displayName: "${displayName}"`);
+    
+    switch(eventType) {
+      case 'superchat':
+        html = `SUPER CHAT <span style="color:#FFD700">${eventData.amount || ''}</span>`;
+        break;
+      case 'supersticker':
+        html = `SUPER STICKER <span style="color:#FFD700">${eventData.amount || ''}</span>`;
+        break;
+      case 'sponsor':
+        if (eventData.gifted) {
+          if (eventData.giftCount) {
+            html = `GIFTED ${eventData.giftCount} MEMBERSHIPS`;
           } else {
-            addItem({avatar:p.avatar, name:user, html:`REDEEMED: ${rewardDisplay}`, provider});
+            html = `MEMBERSHIP GIFT`;
           }
-        } else if (type === 'hypetrainStart') {
-          addItem({avatar:'', name:'HYPE TRAIN', html:`Level ${p.level} Started`, provider});
-        } else if (type === 'hypetrainProgress') {
-          addItem({avatar:'', name:'HYPE TRAIN', html:`Progress: ${p.progress}/${p.goal}`, provider});
-        } else if (type === 'hypetrainEnd') {
-          addItem({avatar:'', name:'HYPE TRAIN', html:`Ended at Level ${p.level}`, provider});
-        } else if (type === 'communityGiftPurchase') {
-          giftQueue = {gifter:p.displayName||p.username, avatar:p.avatar, remaining:p.amount};
-        } else if (type === 'subscription' || type === 'subscriber') {
-          if (giftQueue && giftQueue.remaining > 0) {
-            const recv = p.displayName||p.username;
-            addItem({avatar:giftQueue.avatar, name:giftQueue.gifter, html:`GIFTED SUB to ${recv}`, provider});
-            giftQueue.remaining--; 
-            if (giftQueue.remaining === 0) giftQueue = null;
-          } else {
-            addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
+          if (eventData.memberLevelName) {
+            html += ` (${eventData.memberLevelName})`;
           }
-          $('#twitchSubs').text((+$('#twitchSubs').text()||0)+1);
-        } else if (/tip|cheer/.test(type)) {
-          addItem({avatar:p.avatar, name:p.displayName||p.username, html:`${p.bits||p.amount} bits`, provider});
-          $('#twitchBits').text((+$('#twitchBits').text()||0)+(p.bits||p.amount));
-        } else if (type === 'raid') {
-          addItem({avatar:p.avatar, name:p.displayName||p.username, html:`RAID: ${p.amount}`, provider});
-          $('#twitchRaids').text((+$('#twitchRaids').text()||0)+1);
+        } else {
+          html = `NEW MEMBER`;
+          if (eventData.memberLevelName) {
+            html += ` (${eventData.memberLevelName})`;
+          }
+          if (eventData.isUpgrade) {
+            html = `MEMBERSHIP UPGRADE (${eventData.memberLevelName || 'Member'})`;
+          }
         }
-      } else if (provider === 'youtube') {
-        console.log('▶ YouTube event:', type, p);
-        if (type === 'subscriber') {
-          addItem({avatar:p.avatar, name:p.displayName||p.username, html:'SUBSCRIBED', provider});
-          $('#ytSubscribers').text((+$('#ytSubscribers').text()||0)+1);
-        } else if (type === 'superchat') {
-          addItem({avatar:p.avatar, name:p.displayName||p.username, html:`SUPERCHAT: ${p.amount}`, provider});
-          $('#ytSuperchats').text((+$('#ytSuperchats').text()||0)+1);
-        } else if (type === 'sponsor') {
-          if (p.gifted) {
-            addItem({avatar:p.avatar, name:p.sender, html:`GIFTED MEMBERSHIP to ${p.displayName||p.username}`, provider});
-          } else {
-            addItem({avatar:p.avatar, name:p.displayName||p.username, html:'NEW MEMBER', provider});
-          }
-          $('#ytMembers').text((+$('#ytMembers').text()||0)+1);
+        break;
+      case 'milestone':
+        html = `MEMBERSHIP MILESTONE`;
+        if (eventData.memberMonth) {
+          html += ` (${eventData.memberMonth} months)`;
         }
-      }
-    };
-  } catch(err) { 
-    console.error('Astro init failed:', err);
-    updateConnectionStatus('twitch', false);
-    updateConnectionStatus('youtube', false);
+        if (eventData.message) {
+          html += `: ${eventData.message}`;
+        }
+        break;
+      case 'gift_membership_purchase':
+        html = `GIFTED ${eventData.giftCount || 1} MEMBERSHIPS`;
+        if (eventData.memberLevelName) {
+          html += ` (${eventData.memberLevelName})`;
+        }
+        break;
+      case 'subscription':
+        html = 'SUBSCRIBED!';
+        break;
+      default:
+        html = `${eventType.toUpperCase()}`;
+        if (eventData.message) {
+          html += `: ${eventData.message}`;
+        }
+    }
+
+    // Determine avatar and name to use
+    let avatarToUse = eventData.avatar || '';
+    let nameToUse = displayName;
+
+    // Use gray circle for null avatars (e.g., Stream Elements subscriptions)
+    if (!avatarToUse) {
+      avatarToUse = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM4ODg4ODgiLz4KPHN2Zz4K';
+    }
+
+    let extraClass = '';
+    if (eventType === 'gift_membership_purchase') {
+      extraClass = 'gift-membership';
+    } else if (eventType === 'superchat' || eventType === 'supersticker') {
+      extraClass = 'superchat';
+    }
+
+    addItem({
+      avatar: avatarToUse,
+      name: nameToUse,
+      html: html,
+      provider: 'youtube',
+      extraClass: extraClass
+    });
+
+    // Update counters based on event type
+    if (eventType === 'superchat' || eventType === 'supersticker') {
+      const currentCount = parseInt(document.getElementById('ytSuperchats').textContent) || 0;
+      document.getElementById('ytSuperchats').textContent = currentCount + 1;
+    } else if (eventType === 'sponsor' || eventType === 'milestone' || eventType === 'gift_membership_purchase') {
+      const currentCount = parseInt(document.getElementById('ytMembers').textContent) || 0;
+      document.getElementById('ytMembers').textContent = currentCount + 1;
+    } else if (eventType === 'subscription') {
+      const currentCount = parseInt(document.getElementById('ytSubscribers').textContent) || 0;
+      document.getElementById('ytSubscribers').textContent = currentCount + 1;
+    }
   }
+
+  // Function to handle Twitch events
+  function handleTwitchEvent(eventType, eventData) {
+    console.log(`[Overlay] Handling Twitch event: ${eventType}`, eventData);
+    
+    let html = '';
+    let displayName = eventData.displayName || eventData.username || 'Unknown User';
+    
+    switch(eventType) {
+      case 'follow':
+        html = 'FOLLOWED';
+        break;
+      case 'subscriber':
+        html = `NEW SUBSCRIBER`;
+        if (eventData.months && eventData.months > 1) {
+          html = `RESUB (${eventData.months} months)`;
+        }
+        if (eventData.tier && eventData.tier !== '1000') {
+          const tierName = eventData.tier === '2000' ? 'Tier 2' : eventData.tier === '3000' ? 'Tier 3' : `Tier ${eventData.tier}`;
+          html += ` - ${tierName}`;
+        }
+        break;
+      case 'gift_subscription':
+        html = `GIFT SUB from ${eventData.gifter}`;
+        if (eventData.tier && eventData.tier !== '1000') {
+          const tierName = eventData.tier === '2000' ? 'Tier 2' : eventData.tier === '3000' ? 'Tier 3' : `Tier ${eventData.tier}`;
+          html += ` - ${tierName}`;
+        }
+        break;
+      case 'gift_purchase':
+        html = `GIFTED ${eventData.giftCount || 1} SUBS`;
+        if (eventData.tier && eventData.tier !== '1000') {
+          const tierName = eventData.tier === '2000' ? 'Tier 2' : eventData.tier === '3000' ? 'Tier 3' : `Tier ${eventData.tier}`;
+          html += ` - ${tierName}`;
+        }
+        break;
+      case 'bits':
+        html = `CHEERED <span style="color:#9C3EE8">${eventData.amount || eventData.bits} bits</span>`;
+        break;
+      case 'raid':
+        html = `RAID with <span style="color:#0F9D58">${eventData.viewerCount || eventData.viewers} viewers</span>`;
+        break;
+      case 'channel_point_redemption':
+        html = `REDEEMED <span style="color:#0F9D58">${eventData.rewardTitle}</span>: ${eventData.message}`;
+        break;
+      default:
+        html = `${eventType.toUpperCase()}`;
+        if (eventData.message) {
+          html += `: ${eventData.message}`;
+        }
+    }
+
+    // Add the item to the feed
+    addItem({
+      avatar: eventData.avatar || '',
+      name: displayName,
+      html: html,
+      provider: 'twitch'
+    });
+
+    // Update counters based on event type
+    if (eventType === 'follow') {
+      tF++; document.getElementById('twitchFollows').textContent = tF;
+    } else if (eventType === 'subscriber' || eventType === 'gift_subscription' || eventType === 'gift_purchase') {
+      tS++; document.getElementById('twitchSubs').textContent = tS;
+    } else if (eventType === 'bits') {
+      tB += (eventData.amount || eventData.bits || 0); document.getElementById('twitchBits').textContent = tB;
+    } else if (eventType === 'raid') {
+      tR += (eventData.viewerCount || eventData.viewers || 0); document.getElementById('twitchRaids').textContent = tR;
+    }
+  }
+  
+  // Token reload listener for auth refresh
+  window.electron.ipcRenderer.on('reload-tokens', async () => {
+    console.log('🔄 [Overlay] Reloading tokens from secure storage...');
+    TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+    console.log('✅ [Overlay] Tokens reloaded successfully');
+  });
+
+  // Connection status listeners for service status updates
+  window.electron.ipcRenderer.on('twitch-connection-status', (event, data) => {
+    console.log('[Overlay] Received Twitch connection status update:', data);
+    const status = data.connectionStatus !== undefined ? data.connectionStatus : data;
+    updateConnectionStatus('twitch', status);
+    twitchServiceRunning = data.connectionStatus;
+  });
+
+  window.electron.ipcRenderer.on('youtube-connection-status', (event, data) => {
+    console.log('[Overlay] Received YouTube connection status update:', data);
+    console.log('[Overlay] data.connectionStatus value:', data.connectionStatus);
+    console.log('[Overlay] data.connectionStatus type:', typeof data.connectionStatus);
+    console.log('[Overlay] About to call updateConnectionStatus with:', 'youtube', data.connectionStatus);
+    updateConnectionStatus('youtube', data.connectionStatus);
+    console.log('[Overlay] updateConnectionStatus call completed');
+    youtubeServiceRunning = data.connectionStatus;
+  });
+
+  window.electron.ipcRenderer.on('youtube-data-update', (event, data) => {
+    console.log('🔥 [Overlay] IPC LISTENER CALLED! Event received successfully!');
+    console.log('[Overlay] Received YouTube data update:', data);
+    
+    // Update viewer count
+    if (data.viewerCount !== undefined) {
+      document.getElementById('ytViewers').textContent = data.viewerCount || '–';
+    }
+
+    // Process new events
+    if (data && data.events && data.events.length > 0) {
+      console.log(`[Overlay] Received ${data.events.length} YouTube events`);
+      data.events.forEach(event => {
+        console.log(`[Overlay] Processing event: ${event.type} from ${event.displayName || event.username}`);
+        
+        // FILTER OUT REGULAR CHAT MESSAGES
+        if (event.type === 'textMessageEvent' || event.type === 'chat') {
+          console.log(`[Overlay] FILTERING OUT YouTube chat message from ${event.displayName}`);
+                    // STREAMELEMENTS SUBSCRIPTION DETECTION - Check before filtering out
+                    if ((event.displayName === 'StreamElements' || event.displayName === 'Streamelements') && event.message) {
+            console.log(`[Overlay] StreamElements message detected: "${event.message}"`);
+            
+            // Check for exact StreamElements subscription pattern
+            if (event.message.endsWith(' just subscribed!')) {
+              const subscriberName = event.message.replace(' just subscribed!', '').trim();
+              console.log(`[Overlay] 🎉 YOUTUBE SUBSCRIPTION DETECTED! Subscriber: ${subscriberName}`);
+              
+              // Create subscription event and call handleYouTubeEvent
+              handleYouTubeEvent('subscription', {
+                displayName: subscriberName,
+                username: subscriberName,
+                avatar: '', // StreamElements subs don't have subscriber avatar
+                message: event.message,
+                source: 'StreamElements'
+              });
+            }
+          }
+          return; // Skip regular chat messages in overlay
+        }
+        
+        console.log(`[Overlay] Passing through event type: ${event.type} (no mapping needed)`);
+        
+        // Prepare event data with proper mapping for handleYouTubeEvent
+        const mappedEventData = {
+          ...event,
+          // Ensure avatar and displayName are available
+          avatar: event.author?.avatar || event.avatar || '',
+          displayName: event.author?.name || event.displayName || event.username || '',
+          // Map viewer count for raids
+          viewers: event.viewerCount || event.viewers || 0,
+          // Map bits amount for bits events
+          bits: event.amount || event.bits || 0
+        };
+        
+        // Pass the original event type from the API service
+        handleYouTubeEvent(event.type, mappedEventData);
+      });
+    } else {
+      console.log('[Overlay] No YouTube events to process');
+    }
+
+    // Update connection status
+    updateConnectionStatus('youtube', data.connectionStatus);
+  });
+
+  // Function to update connection status for a platform
+  function updateConnectionStatus(platform, status) {
+    console.log(`[updateConnectionStatus] Called with platform: ${platform}, status: ${status}`);
+    const statusElement = document.getElementById(`${platform}-status`);
+    console.log(`[updateConnectionStatus] Found element:`, statusElement);
+    if (statusElement) {
+      console.log(`[updateConnectionStatus] Element classes before update:`, statusElement.classList.toString());
+      if (status === true) {
+        statusElement.classList.remove('status-disconnected');
+        statusElement.classList.add('status-connected');
+        console.log(`[updateConnectionStatus] Added status-connected class`);
+      } else {
+        statusElement.classList.remove('status-connected');
+        statusElement.classList.add('status-disconnected');
+        console.log(`[updateConnectionStatus] Added status-disconnected class`);
+      }
+      console.log(`[updateConnectionStatus] Element classes after update:`, statusElement.classList.toString());
+    } else {
+      console.error(`[updateConnectionStatus] ❌ Element with ID '${platform}-status' not found!`);
+    }
+  }
+
+  // Function to add an item to the feed
+  function addItem(item) {
+    const $feed = $('.feed');
+    const $item = $(`<div class="event-row">
+      <div class='provider-icon-box'><img src='${item.provider === 'twitch' ? 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png' : item.provider === 'youtube' ? 'https://www.youtube.com/favicon.ico' : 'https://www.tiktok.com/favicon.ico'}' alt='${item.provider}'></div>
+      <div class="item ${item.provider}-item ${item.extraClass || ''}">
+        <img class="avatar" src="${item.avatar}" alt="">
+        <div class="username">${item.name}</div>
+        <div class="details">${item.html}</div>
+      </div>
+    </div>`);
+    $feed.append($item);
+    $feed.each(function() { this.scrollTop = this.scrollHeight; });
+    
+    // Limit to 30 most recent events
+    while ($feed.children('.event-row').length > 30) {
+      $feed.children('.event-row').first().remove();
+    }
+  }
+  
+  // Mark initialization as complete
+  console.log('[Overlay] Initialization complete - buttons are now active');
+  isInitialized = true;
+
 })();
-  </script>
+</script>
 </body>
 </html>
