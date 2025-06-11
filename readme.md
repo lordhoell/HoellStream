@@ -73,6 +73,9 @@ Ensure App is in testing
 Add your YouTube account email as a test user
 
 Special Thanks:
+
 Ingrid Mb
+
 Jayzon Zane
+
 Germdove
