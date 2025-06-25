@@ -9,6 +9,7 @@
     .chat-feed { height:100vh; overflow-y:auto; padding:10px; box-sizing:border-box; font-size:25px; }
     .chat-line { display:flex; align-items:center; margin-bottom:16px; }
     .platform-icon, .avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; }
+    .platform-icon { margin-right:12px; }
     .avatar { margin-right:10px; }
     .username { font-weight:bold; color:#c47cff; margin-right:8px; }
     .message { flex:1; color:#fff; word-break:break-word; }
@@ -71,6 +72,15 @@
       margin-right: 8px;
     }
     
+    .platform-icon-status {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      z-index: 2;
+      margin: 0;
+    }
+    
     .platform-icon {
       z-index: 2;
     }
@@ -98,6 +108,42 @@
     .chat-feed {
       padding-top: 40px;
     }
+    
+    /* Badge styling */
+    .badge {
+      font-size: 20px;
+      height: 24px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .badge img {
+      height: 24px;
+      width: auto;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .mod-badge {
+      color: #3498db;
+    }
+    .sub-badge {
+      color: #e74c3c;
+    }
+    .badges {
+      margin-left: 0;
+    }
+    .owner-badge {
+      color: #ff69b4;
+    }
+    .member-badge {
+      color: #f1c40f;
+    }
+    .vip-badge {
+      color: #9b59b6;
+    }
+    .badge-default {
+      /* Default styling for other badge types like bits, prime, etc. */
+      opacity: 0.9;
+    }
   </style>
 </head>
 <body>
@@ -106,19 +152,19 @@
     <div class="platform-indicator">
       <div class="platform-icon-container">
         <div class="connection-status status-disconnected" id="tiktok-status"></div>
-        <img class="platform-icon" src="https://www.tiktok.com/favicon.ico" alt="TikTok">
+        <img class="platform-icon-status" src="https://www.tiktok.com/favicon.ico" alt="TikTok">
       </div>
     </div>
     <div class="platform-indicator">
       <div class="platform-icon-container">
         <div class="connection-status status-disconnected" id="twitch-status"></div>
-        <img class="platform-icon" src="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png" alt="Twitch">
+        <img class="platform-icon-status" src="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png" alt="Twitch">
       </div>
     </div>
     <div class="platform-indicator">
       <div class="platform-icon-container">
         <div class="connection-status status-disconnected" id="youtube-status"></div>
-        <img class="platform-icon" src="https://www.youtube.com/favicon.ico" alt="YouTube">
+        <img class="platform-icon-status" src="https://www.youtube.com/favicon.ico" alt="YouTube">
       </div>
     </div>
   </div>
@@ -128,6 +174,22 @@
 (async () => {
   // Load OAuth tokens only
   let TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+  
+  // Load configuration for font sizes
+  const CONFIG = await window.electron.ipcRenderer.invoke('load-config') || {};
+  
+  // Apply font sizes from config
+  if (CONFIG.CHAT_FONT_SIZE) {
+    document.querySelector('.chat-feed').style.fontSize = CONFIG.CHAT_FONT_SIZE + 'px';
+  }
+  
+  // Apply username font size
+  if (CONFIG.USERNAME_FONT_SIZE) {
+    const style = document.createElement('style');
+    style.id = 'dynamic-username-style';
+    style.textContent = `.username { font-size: ${CONFIG.USERNAME_FONT_SIZE}em !important; }`;
+    document.head.appendChild(style);
+  }
   
   console.log('Chat script loaded with OAuth tokens');
   console.log('Twitch token available:', !!TOKENS?.twitch?.access_token);
@@ -171,36 +233,40 @@
   const emotes = {};
   
   // Add a chat message to the feed
-  function addChat(platform, user, message, avatar, color, isHtml = false) {
-    console.log(`[addChat] Called with:`, { platform, user, message, avatar, color, isHtml });
+  function addChat(platform, user, message, avatar, color, isHtml = false, badges = null) {
+    console.log(`[addChat] Called with:`, { platform, user, message, avatar, color, isHtml, badges });
     
     const line = document.createElement('div');
     line.className = 'chat-line';
     
-    // Platform icon with status indicator
-    const platformIconContainer = document.createElement('div');
-    platformIconContainer.className = 'platform-icon-container';
-    
+    // Platform icon
     const platformIcon = document.createElement('img');
     platformIcon.className = 'platform-icon';
     platformIcon.src = icons[platform];
     platformIcon.alt = platform;
-    
-    platformIconContainer.appendChild(platformIcon);
-    line.appendChild(platformIconContainer);
+    line.appendChild(platformIcon);
     
     // User avatar
     const avatarImg = document.createElement('img');
     avatarImg.className = 'avatar';
-    avatarImg.src = avatar;
+    avatarImg.src = avatar || icons[platform];
     avatarImg.alt = user;
     line.appendChild(avatarImg);
     
-    // Username
+    // Username with badges
     const username = document.createElement('div');
     username.className = 'username';
     username.textContent = user;
     if (color) username.style.color = color;
+    
+    // Add badges after username
+    if (badges && badges.length > 0) {
+      const badgeContainer = document.createElement('span');
+      badgeContainer.className = 'badges';
+      badgeContainer.innerHTML = ' ' + badges.join(' ');
+      username.appendChild(badgeContainer);
+    }
+    
     line.appendChild(username);
     
     // Message content
@@ -287,6 +353,172 @@
     }
   }
   
+  // Function to extract TikTok badges from user data
+  function extractTikTokBadges(data) {
+    const badges = [];
+    
+    // Check for moderator badge
+    if (data.isModerator) {
+      badges.push('<span class="badge mod-badge" title="Moderator">👮</span>');
+    }
+    
+    // Check for subscriber badge
+    if (data.isSubscriber) {
+      // Try to get subscriber badge image from userBadges array
+      let subBadgeFound = false;
+      if (data.userBadges && Array.isArray(data.userBadges)) {
+        for (const badge of data.userBadges) {
+          if (badge.type === 'image' && badge.url && badge.url.includes('subs_badge')) {
+            badges.push(`<img class="badge sub-badge" src="${badge.url}" title="Subscriber" alt="Sub">`);
+            subBadgeFound = true;
+            break;
+          }
+        }
+      }
+      // Fallback to emoji if no image badge found
+      if (!subBadgeFound) {
+        badges.push('<span class="badge sub-badge" title="Subscriber">⭐</span>');
+      }
+    }
+    
+    return badges;
+  }
+
+  // Function to extract YouTube badges from user data
+  function extractYouTubeBadges(data) {
+    const badges = [];
+    
+    // Check for channel owner badge (YouTube doesn't have owner badges)
+    if (data.isChatOwner) {
+      badges.push('<span class="badge owner-badge" title="Channel Owner">👑</span>');
+    }
+    
+    // Check for moderator badge
+    if (data.isChatModerator) {
+      // Try to get cached moderator badge image
+      const moderatorBadgePath = getCachedBadgePath('moderator');
+      if (moderatorBadgePath) {
+        badges.push(`<img class="badge mod-badge" src="file://${moderatorBadgePath}" alt="Moderator" title="Moderator" />`);
+      } else {
+        // Fallback to emoji
+        badges.push('<span class="badge mod-badge" title="Moderator">🔧</span>');
+      }
+    }
+    
+    // Check for member/sponsor badge
+    if (data.isChatSponsor) {
+      // Try to get cached member badge image
+      const memberBadgePath = getCachedBadgePath('member');
+      if (memberBadgePath) {
+        badges.push(`<img class="badge member-badge" src="file://${memberBadgePath}" alt="Channel Member" title="Channel Member" />`);
+      } else {
+        // Fallback to emoji
+        badges.push('<span class="badge member-badge" title="Channel Member">💎</span>');
+      }
+    }
+    
+    return badges;
+  }
+
+  // Function to extract Twitch badges from user data
+  function extractTwitchBadges(data) {
+    const badges = [];
+    const tags = data.tags || {};
+    const badgeData = data.badgeData || [];
+    
+    console.log('[extractTwitchBadges] Processing tags:', tags);
+    console.log('[extractTwitchBadges] Badge data:', badgeData);
+    
+    // If we have official badge data, use those images
+    if (badgeData && badgeData.length > 0) {
+      // Sort badges by importance (broadcaster > moderator > vip > subscriber)
+      const badgeOrder = ['broadcaster', 'moderator', 'vip', 'subscriber', 'bits'];
+      
+      badgeData.sort((a, b) => {
+        const aIndex = badgeOrder.indexOf(a.setId);
+        const bIndex = badgeOrder.indexOf(b.setId);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      });
+      
+      badgeData.forEach(badge => {
+        let badgeClass = 'badge';
+        let shouldShowBadge = true;
+        
+        // Add specific styling classes - only for badges we want to show
+        switch (badge.setId) {
+          case 'broadcaster':
+            badgeClass += ' owner-badge';
+            break;
+          case 'moderator':
+            badgeClass += ' mod-badge';
+            break;
+          case 'vip':
+            badgeClass += ' vip-badge';
+            break;
+          case 'subscriber':
+            badgeClass += ' sub-badge';
+            break;
+          default:
+            // Skip all other badges (like no-sound, bits, etc.)
+            shouldShowBadge = false;
+        }
+        
+        // Only add badge to display if it's one we want to show
+        if (shouldShowBadge) {
+          badges.push(`<img class="${badgeClass}" src="${badge.imageUrl}" alt="${badge.title}" title="${badge.description}" />`);
+        }
+      });
+    } else {
+      // Fallback to emoji badges if no official badge data
+      const badgesTag = tags.badges || '';
+      const badgesList = badgesTag.split(',').filter(b => b.trim());
+      
+      // Check individual boolean flags as backup
+      const isMod = tags.mod === '1' || badgesList.some(b => b.startsWith('moderator/'));
+      const isSub = tags.subscriber === '1' || badgesList.some(b => b.startsWith('subscriber/'));
+      const isVip = badgesList.some(b => b.startsWith('vip/'));
+      const isBroadcaster = badgesList.some(b => b.startsWith('broadcaster/'));
+      
+      // Add emoji badges in order of importance
+      if (isBroadcaster) {
+        badges.push('<span class="badge owner-badge">👑</span>');
+      }
+      if (isMod) {
+        badges.push('<span class="badge mod-badge">🔧</span>');
+      }
+      if (isVip) {
+        badges.push('<span class="badge vip-badge">💎</span>');
+      }
+      if (isSub) {
+        badges.push('<span class="badge sub-badge">⭐</span>');
+      }
+    }
+    
+    console.log('[extractTwitchBadges] Extracted badges:', badges);
+    return badges;
+  }
+
+  // Function to get cached badge path (similar to emoji caching)
+  function getCachedBadgePath(badgeType) {
+    try {
+      const { app } = require('electron').remote || require('@electron/remote');
+      const path = require('path');
+      const fs = require('fs');
+      
+      const badgeCacheDir = path.join(app.getPath('userData'), 'badge-cache');
+      const badgePath = path.join(badgeCacheDir, `${badgeType}.png`);
+      
+      // Check if badge file exists
+      if (fs.existsSync(badgePath)) {
+        return badgePath;
+      }
+    } catch (error) {
+      console.log(`[Badge Cache] Could not access cached badge ${badgeType}:`, error);
+    }
+    
+    return null;
+  }
+
   // Twitch Chat IPC listener
   window.electron.ipcRenderer.on('twitch-chat-message', (event, data) => {
     console.log('Received Twitch chat message:', data);
@@ -295,7 +527,7 @@
     getAvatar(username).then(avatar => {
       // Check if message contains HTML (emotes)
       const hasEmotes = message.includes('<img');
-      addChat('twitch', displayName, message, avatar, null, hasEmotes);
+      addChat('twitch', displayName, message, avatar, null, hasEmotes, extractTwitchBadges(data));
     });
   });
 
@@ -345,13 +577,24 @@
   function handleYouTubeEvent(eventType, eventData) {
     console.log(`🔍 [Chat] handleYouTubeEvent called with type: ${eventType}`, eventData);
     
+    // Skip malformed events with undefined/empty content
+    if (!eventType || eventType === 'undefined') {
+      console.log(`⚠️ [Chat] Ignoring malformed YouTube event with undefined type`);
+      return;
+    }
+    
+    const rawMessage = eventData.message || eventData.text || '';
+    if (!rawMessage || rawMessage === 'undefined') {
+      console.log(`⚠️ [Chat] Ignoring YouTube event with undefined/empty message`);
+      return;
+    }
+    
     let message = '';
     
     switch(eventType) {
       case 'chat':
       case 'textMessageEvent':
         // Regular chat message - check for emoji processing
-        const rawMessage = eventData.message || eventData.text || '';
         console.log(`🔍 [Chat] Processing YouTube chat message: "${rawMessage}"`);
         console.log(`🔍 [Chat] Message contains HTML: ${rawMessage.includes('<')}`);
         console.log(`🔍 [Chat] Message contains img tags: ${rawMessage.includes('<img')}`);
@@ -426,7 +669,7 @@
     const hasEmojis = message.includes('<img') && message.includes('youtube-emoji');
     console.log(`🔍 [Chat] Adding YouTube message to chat. HasEmojis: ${hasEmojis}, Message: "${message}"`);
     
-    addChat('youtube', eventData.displayName, message, eventData.avatar, null, hasEmojis);
+    addChat('youtube', eventData.displayName, message, eventData.avatar, null, hasEmojis, extractYouTubeBadges(eventData));
   }
 
   // TikTok WebSocket
@@ -457,6 +700,27 @@
         const avatar = d.profilePictureUrl || icons.tiktok;
         const displayName = d.nickname || d.uniqueId || 'Unknown';
         
+        // COMPREHENSIVE LOGGING FOR BADGE INVESTIGATION
+        console.log('=== TikTok Chat Message Data Analysis ===');
+        console.log('▶ TikTok chat FULL DATA STRUCTURE:', JSON.stringify(d, null, 2));
+        console.log('▶ TikTok chat ALL AVAILABLE KEYS:', Object.keys(d));
+        console.log('▶ TikTok chat DATA TYPES:', Object.keys(d).map(key => `${key}: ${typeof d[key]}`));
+        
+        // Look for potential badge fields
+        const potentialBadgeFields = [
+          'isModerator', 'moderator', 'mod', 'userRole', 'role',
+          'isSubscriber', 'subscriber', 'sub', 'followRole', 
+          'badges', 'userBadges', 'userLevel', 'level',
+          'followInfo', 'subscriptionInfo', 'userInfo', 'authorInfo'
+        ];
+        
+        console.log('▶ TikTok POTENTIAL BADGE FIELDS CHECK:');
+        potentialBadgeFields.forEach(field => {
+          if (d.hasOwnProperty(field)) {
+            console.log(`  ✅ FOUND: ${field} =`, d[field]);
+          }
+        });
+        
         // Enhanced logging for TikTok chat messages
         console.log('▶ TikTok chat message:', {
           text: d.comment,
@@ -465,6 +729,7 @@
           charCodes: d.comment ? Array.from(d.comment).map(c => c.charCodeAt(0).toString(16)) : [],
           emotes: d.emotes
         });
+        console.log('=== End TikTok Data Analysis ===');
         
         // Process TikTok emotes if present
         let processedMessage = d.comment || '';
@@ -495,10 +760,10 @@
           }
           
           // Use innerHTML for messages with emotes
-          addChat('tiktok', displayName, processedMessage, avatar, null, true);
+          addChat('tiktok', displayName, processedMessage, avatar, null, true, extractTikTokBadges(d));
         } else {
           // Regular text message without emotes
-          addChat('tiktok', displayName, processedMessage, avatar);
+          addChat('tiktok', displayName, processedMessage, avatar, null, false, extractTikTokBadges(d));
         }
       } else if (m.event === 'gift') {
         const d = m.data;
@@ -548,6 +813,146 @@
     console.log(`🎨 [Chat] YouTube emoji cache updated with ${newEmojiCount} new emojis - updating recent messages...`);
     updateRecentYouTubeMessagesWithNewEmojis();
   });
+
+  // Initialize YouTube badge URLs cache
+  window.youtubeBadgeUrls = {};
+
+  // Function to update YouTube badge URLs from cache
+  async function updateYouTubeBadgeUrls() {
+    try {
+      // Request badge URLs from main process
+      const badgeUrls = await window.electron.ipcRenderer.invoke('get-youtube-badge-urls');
+      if (badgeUrls) {
+        window.youtubeBadgeUrls = badgeUrls;
+        console.log('🎖️ [Chat] YouTube badge URLs updated:', badgeUrls);
+      }
+    } catch (error) {
+      console.error('❌ [Chat] Failed to get YouTube badge URLs:', error);
+    }
+  }
+
+  // Handle YouTube badge cache updates
+  window.electron.ipcRenderer.on('youtube-badge-cache-update', (event, newBadgeCount) => {
+    console.log(`🎖️ [Chat] YouTube badge cache updated with ${newBadgeCount} new badges - updating URLs...`);
+    updateYouTubeBadgeUrls();
+  });
+
+  // Initialize badge URLs on startup
+  updateYouTubeBadgeUrls();
+
+  // Handle font size updates
+  window.electron.ipcRenderer.on('font-size-update', (event, fontSizes) => {
+    if (fontSizes.chatFontSize) {
+      document.querySelector('.chat-feed').style.fontSize = fontSizes.chatFontSize + 'px';
+      console.log('Chat font size updated to:', fontSizes.chatFontSize + 'px');
+    }
+    
+    // Update username font size
+    if (fontSizes.usernameFontSize) {
+      // Remove existing style if present
+      const existingStyle = document.getElementById('dynamic-username-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      
+      // Add new style
+      const style = document.createElement('style');
+      style.id = 'dynamic-username-style';
+      style.textContent = `.username { font-size: ${fontSizes.usernameFontSize}em !important; }`;
+      document.head.appendChild(style);
+      console.log('Username font size updated to:', fontSizes.usernameFontSize + 'em');
+    }
+  });
+
+  // Handle text color updates from settings
+  window.electron.ipcRenderer.on('text-color-update', (event, textColor) => {
+    console.log('Chat text color updated to:', textColor);
+    
+    // Remove existing dynamic text color style if present
+    const existingStyle = document.getElementById('dynamic-text-color-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add new text color style
+    const style = document.createElement('style');
+    style.id = 'dynamic-text-color-style';
+    style.textContent = `.message { color: ${textColor} !important; }`;
+    document.head.appendChild(style);
+  });
+
+  // Handle background color updates from settings
+  window.electron.ipcRenderer.on('background-color-update', (event, backgroundColor) => {
+    console.log('Chat background color updated to:', backgroundColor);
+    
+    // Remove existing dynamic background color style if present
+    const existingStyle = document.getElementById('dynamic-background-color-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add new background color style
+    const style = document.createElement('style');
+    style.id = 'dynamic-background-color-style';
+    style.textContent = `body { background-color: ${backgroundColor} !important; }`;
+    document.head.appendChild(style);
+  });
+
+  // Handle theme color (events color) updates from settings
+  window.electron.ipcRenderer.on('events-color-update', (event, eventsColor) => {
+    console.log('Chat username color updated to:', eventsColor);
+    
+    // Remove existing dynamic username color style if present
+    const existingStyle = document.getElementById('dynamic-username-color-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add new username color style
+    const style = document.createElement('style');
+    style.id = 'dynamic-username-color-style';
+    style.textContent = `.username { color: ${eventsColor} !important; }`;
+    document.head.appendChild(style);
+  });
+
+  // Handle TikTok test messages (global function for test system)
+  window.handleTikTokMessage = function(messageData) {
+    console.log('🧪 [Chat] handleTikTokMessage called with:', messageData);
+    
+    if (messageData.event === 'chat') {
+      const d = messageData.data;
+      const avatar = d.profilePictureUrl || icons.tiktok;
+      const displayName = d.nickname || d.uniqueId || 'Unknown';
+      
+      // Process TikTok emotes if present
+      let processedMessage = d.comment || '';
+      
+      // Check if the message has emotes to process
+      if (d.emotes && Array.isArray(d.emotes) && d.emotes.length > 0) {
+        console.log('▶ TikTok test message has emotes:', d.emotes);
+        
+        // Create HTML for each emote
+        processedMessage = '';
+        
+        d.emotes.forEach(emote => {
+          if (emote.emoteImageUrl) {
+            const emoteImg = `<img class='emote' src='${emote.emoteImageUrl}' alt='${emote.emoteId || "emote"}' title='${emote.emoteId || ""}'>`;
+            processedMessage += emoteImg;
+          }
+        });
+        
+        if (d.comment.trim() !== '') {
+          processedMessage = d.comment + ' ' + processedMessage;
+        }
+        
+        // Use innerHTML for messages with emotes
+        addChat('tiktok', displayName, processedMessage, avatar, null, true, []);
+      } else {
+        // Regular text message without emotes
+        addChat('tiktok', displayName, processedMessage, avatar, null, false, []);
+      }
+    }
+  };
 
   // Retroactively update recent YouTube messages with newly cached emojis
   async function updateRecentYouTubeMessagesWithNewEmojis() {

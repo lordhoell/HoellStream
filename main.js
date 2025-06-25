@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const fetch = require('node-fetch');
+const express = require('express');
+const cors = require('cors');
 
 // Import the auth module
 const auth = require('./auth');
@@ -14,9 +16,77 @@ const YouTubeAPIService = require('./youtube-api');
 // Import the Twitch API service
 const TwitchAPIService = require('./twitch-api');
 
+// Import the Twitch Activity Scraper
+const TwitchActivityScraper = require('./twitch-activity-scraper');
+
 // Global service instances
 let youtubeService = null;
 let twitchService = null;
+let twitchActivityScraper = null;
+
+// HTTP API Server
+let apiServer = null;
+const API_PORT = 3000;
+
+// Event Storage System
+const eventStorage = {
+  events: [],
+  maxEvents: 50,
+  
+  // Add a new event with deduplication
+  addEvent(event) {
+    // Generate unique ID if not provided
+    if (!event.id) {
+      event.id = `${event.platform}_${event.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Check for duplicates
+    const existingIndex = this.events.findIndex(e => e.id === event.id);
+    if (existingIndex !== -1) {
+      console.log('[Event Storage] Duplicate event ignored:', event.id);
+      return;
+    }
+    
+    // Add timestamp if not provided
+    if (!event.timestamp) {
+      event.timestamp = new Date().toISOString();
+    }
+    
+    // Add to events array
+    this.events.push(event);
+    
+    // Keep only the last maxEvents
+    if (this.events.length > this.maxEvents) {
+      this.events = this.events.slice(-this.maxEvents);
+    }
+    
+    console.log('[Event Storage] Event added:', event.type, 'from', event.platform);
+  },
+  
+  // Get all events
+  getAllEvents() {
+    return [...this.events];
+  },
+  
+  // Get recent events
+  getRecentEvents(count) {
+    return this.events.slice(-count);
+  },
+  
+  // Get events since timestamp
+  getEventsSince(timestamp) {
+    const sinceTime = new Date(timestamp).getTime();
+    return this.events.filter(event => {
+      const eventTime = new Date(event.timestamp).getTime();
+      return eventTime > sinceTime;
+    });
+  },
+  
+  // Clear all events
+  clearEvents() {
+    this.events = [];
+  }
+};
 
 // Helper functions to get paths (lazy-loaded)
 function getConfigPath() {
@@ -37,6 +107,13 @@ function getWindowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json');
 }
 
+function getColorsPath() {
+  if (!app || !app.getPath) {
+    throw new Error('App not ready - cannot get colors path');
+  }
+  return path.join(app.getPath('userData'), 'colors.json');
+}
+
 function defaultConfig() {
   return {
     TWITCH_CHANNEL: "",
@@ -51,6 +128,14 @@ function defaultConfig() {
   };
 }
 
+function defaultColors() {
+  return {
+    TEXT_COLOR: "#FFFFFF",      // White text
+    THEME_COLOR: "#9353ff",     // Purple theme
+    BACKGROUND_COLOR: "#000000" // Black background
+  };
+}
+
 // Use auth module but keep backward compatibility
 function loadConfig() {
   const config = auth.loadConfig();
@@ -59,6 +144,41 @@ function loadConfig() {
 
 function saveConfig(data) {
   return auth.saveConfig(data);
+}
+
+function loadColors() {
+  try {
+    const colorsPath = getColorsPath();
+    if (fs.existsSync(colorsPath)) {
+      const colorsData = fs.readFileSync(colorsPath, 'utf8');
+      const colors = JSON.parse(colorsData);
+      
+      // Ensure all color properties exist with defaults
+      const defaults = defaultColors();
+      return {
+        TEXT_COLOR: colors.TEXT_COLOR || defaults.TEXT_COLOR,
+        THEME_COLOR: colors.THEME_COLOR || defaults.THEME_COLOR,
+        BACKGROUND_COLOR: colors.BACKGROUND_COLOR || defaults.BACKGROUND_COLOR
+      };
+    }
+  } catch (error) {
+    console.error('Error loading colors:', error);
+  }
+  
+  return defaultColors();
+}
+
+function saveColors(colors) {
+  try {
+    const colorsPath = getColorsPath();
+    const colorsData = JSON.stringify(colors, null, 2);
+    fs.writeFileSync(colorsPath, colorsData, 'utf8');
+    console.log('Colors saved successfully:', colors);
+    return true;
+  } catch (error) {
+    console.error('Error saving colors:', error);
+    return false;
+  }
 }
 
 function getWindowState(key, defaults) {
@@ -250,6 +370,84 @@ function createSettingsWindow() {
 }
 
 app.whenReady().then(() => {
+  // Initialize Express API Server
+  const apiApp = express();
+  
+  // Middleware
+  apiApp.use(cors());
+  apiApp.use(express.json());
+  
+  // Logging middleware
+  apiApp.use((req, res, next) => {
+    console.log(`[API] ${req.method} ${req.path}`);
+    next();
+  });
+  
+  // API Routes
+  
+  // Health check endpoint
+  apiApp.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      eventCount: eventStorage.events.length,
+      services: {
+        twitch: twitchService ? twitchService.isRunning : false,
+        youtube: youtubeService ? youtubeService.isRunning : false,
+        tiktok: false // TikTok is handled via WebSocket in overlay
+      }
+    });
+  });
+  
+  // Get all recent events
+  apiApp.get('/api/events', (req, res) => {
+    const events = eventStorage.getAllEvents();
+    res.json({
+      count: events.length,
+      events: events
+    });
+  });
+  
+  // Get specific number of recent events
+  apiApp.get('/api/events/recent/:count', (req, res) => {
+    const count = parseInt(req.params.count) || 10;
+    const events = eventStorage.getRecentEvents(count);
+    res.json({
+      count: events.length,
+      events: events
+    });
+  });
+  
+  // Get events since timestamp
+  apiApp.get('/api/events/since/:timestamp', (req, res) => {
+    try {
+      const timestamp = req.params.timestamp;
+      const events = eventStorage.getEventsSince(timestamp);
+      res.json({
+        count: events.length,
+        events: events
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: 'Invalid timestamp format'
+      });
+    }
+  });
+  
+  // Error handling middleware
+  apiApp.use((err, req, res, next) => {
+    console.error('[API] Error:', err);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: err.message
+    });
+  });
+  
+  // Start API server
+  apiServer = apiApp.listen(API_PORT, () => {
+    console.log(`[API] HTTP API server listening on port ${API_PORT}`);
+  });
+  
   // Register IPC handlers
   ipcMain.handle('zoom-changed', (event, zoomFactor) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -258,6 +456,11 @@ app.whenReady().then(() => {
       const bounds = win.getBounds();
       saveWindowState(key, { ...bounds, zoomLevel: zoomFactor });
     }
+  });
+
+  ipcMain.on('stream-event', (event, eventData) => {
+    console.log('[Main] Received stream event:', eventData.type, 'from', eventData.platform);
+    eventStorage.addEvent(eventData);
   });
 
   // Create overlay window
@@ -282,6 +485,13 @@ app.whenReady().then(() => {
       twitchService = null;
     }
     
+    // Stop Twitch Activity Scraper and cleanup
+    if (twitchActivityScraper) {
+      console.log('[Main] Stopping Twitch Activity Scraper from overlay close...');
+      twitchActivityScraper.stop();
+      twitchActivityScraper = null;
+    }
+    
     console.log('[Main] Services stopped from overlay close - quitting app');
     app.quit();
   });
@@ -297,6 +507,11 @@ app.whenReady().then(() => {
 
     setTimeout(() => {
       chatWin.reload();
+      
+      // Load and apply saved colors after windows are ready
+      setTimeout(() => {
+        loadAndApplyColors();
+      }, 10);
     }, 300);
   }, 400);
 
@@ -324,6 +539,13 @@ app.whenReady().then(() => {
               console.log('[Main] Stopping Twitch service for reload...');
               await twitchService.stop();
               twitchService = null;
+            }
+            
+            // Stop Twitch Activity Scraper and cleanup
+            if (twitchActivityScraper) {
+              console.log('[Main] Stopping Twitch Activity Scraper for reload...');
+              await twitchActivityScraper.stop();
+              twitchActivityScraper = null;
             }
             
             console.log('[Main] Services stopped - reloading windows...');
@@ -391,6 +613,20 @@ app.on('window-all-closed', () => {
     twitchService = null;
   }
   
+  // Stop Twitch Activity Scraper and cleanup
+  if (twitchActivityScraper) {
+    console.log('[Main] Stopping Twitch Activity Scraper...');
+    twitchActivityScraper.stop();
+    twitchActivityScraper = null;
+  }
+  
+  // Stop API server
+  if (apiServer) {
+    console.log('[Main] Stopping API server...');
+    apiServer.close();
+    apiServer = null;
+  }
+  
   console.log('[Main] Services cleaned up - quitting app');
   if (process.platform !== 'darwin') app.quit();
 });
@@ -412,12 +648,161 @@ app.on('before-quit', () => {
     twitchService = null;
   }
   
+  // Stop Twitch Activity Scraper and cleanup
+  if (twitchActivityScraper) {
+    console.log('[Main] Force stopping Twitch Activity Scraper...');
+    twitchActivityScraper.stop();
+    twitchActivityScraper = null;
+  }
+  
+  // Stop API server
+  if (apiServer) {
+    console.log('[Main] Force stopping API server...');
+    apiServer.close();
+    apiServer = null;
+  }
+  
   console.log('[Main] All services force stopped');
 });
+
+// Load and apply saved colors to all windows
+function loadAndApplyColors() {
+  const colors = loadColors();
+  console.log('Loading and applying saved colors:', colors);
+  
+  // Apply colors to chat window
+  if (chatWin && !chatWin.isDestroyed()) {
+    chatWin.webContents.send('text-color-update', colors.TEXT_COLOR);
+    chatWin.webContents.send('background-color-update', colors.BACKGROUND_COLOR);
+    chatWin.webContents.send('events-color-update', colors.THEME_COLOR);
+  }
+  
+  // Apply colors to overlay window
+  if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('background-color-update', colors.BACKGROUND_COLOR);
+    overlayWin.webContents.send('events-color-update', colors.THEME_COLOR);
+  }
+}
 
 ipcMain.handle('load-config', async () => loadConfig());
 ipcMain.handle('save-config', async (e, data) => {
   saveConfig(data);
+  
+  // Broadcast font size changes to all windows
+  const allWindows = BrowserWindow.getAllWindows();
+  allWindows.forEach(win => {
+    win.webContents.send('font-size-update', {
+      chatFontSize: data.CHAT_FONT_SIZE,
+      overlayFontSize: data.OVERLAY_FONT_SIZE,
+      statsFontSize: data.STATS_FONT_SIZE,
+      usernameFontSize: data.USERNAME_FONT_SIZE
+    });
+  });
+});
+
+// Test event handlers for font size testing
+ipcMain.on('test-overlay-events', (event, testEvents) => {
+  const allWindows = BrowserWindow.getAllWindows();
+  allWindows.forEach(win => {
+    // Find overlay window by checking if it has overlay-specific content
+    win.webContents.executeJavaScript(`
+      !!document.querySelector('.stats-wrapper') || !!document.querySelector('#youtube-status')
+    `).then(isOverlay => {
+      if (isOverlay) {
+        // Send test events to overlay
+        testEvents.forEach((testEvent, index) => {
+          setTimeout(() => {
+            // Handle TikTok gift events differently
+            if (testEvent.type === 'tiktok-gift') {
+              // Send as TikTok websocket data
+              win.webContents.executeJavaScript(`
+                if (window.handleTikTokMessage) {
+                  window.handleTikTokMessage({
+                    event: 'gift',
+                    ...${JSON.stringify(testEvent)}
+                  });
+                }
+              `);
+            } else {
+              // Send other events as YouTube data
+              win.webContents.send('youtube-data-update', {
+                events: [testEvent],
+                connectionStatus: 'connected'
+              });
+            }
+          }, index * 500); // Stagger the events
+        });
+      }
+    }).catch(() => {
+      // Ignore errors from checking window content
+    });
+  });
+});
+
+ipcMain.on('test-chat-messages', (event, testMessages) => {
+  const allWindows = BrowserWindow.getAllWindows();
+  allWindows.forEach(win => {
+    // Find chat window by checking if it has chat-specific content
+    win.webContents.executeJavaScript(`
+      !!document.querySelector('.chat-feed') || !!document.getElementById('chatFeed')
+    `).then(isChat => {
+      if (isChat) {
+        // Send test messages to chat based on platform
+        testMessages.forEach((testMessage, index) => {
+          setTimeout(() => {
+            switch(testMessage.platform) {
+              case 'youtube':
+                // Send as YouTube event
+                win.webContents.send('youtube-data-update', {
+                  events: [{
+                    type: 'chat',
+                    author: {
+                      name: testMessage.displayName,
+                      avatar: testMessage.avatar
+                    },
+                    message: testMessage.message,
+                    displayName: testMessage.displayName,
+                    avatar: testMessage.avatar
+                  }],
+                  connectionStatus: 'connected'
+                });
+                break;
+              case 'tiktok':
+                // Send as TikTok WebSocket message simulation
+                win.webContents.executeJavaScript(`
+                  if (window.handleTikTokMessage) {
+                    window.handleTikTokMessage({
+                      event: 'chat',
+                      data: {
+                        comment: '${testMessage.message.replace(/'/g, "\\'")}',
+                        uniqueId: '${testMessage.username}',
+                        nickname: '${testMessage.displayName}',
+                        profilePictureUrl: '${testMessage.avatar}',
+                        isModerator: false,
+                        isSubscriber: false,
+                        emotes: []
+                      }
+                    });
+                  }
+                `);
+                break;
+              case 'twitch':
+              default:
+                // Send as Twitch message
+                win.webContents.send('twitch-chat-message', {
+                  username: testMessage.username,
+                  message: testMessage.message,
+                  tags: { 'display-name': testMessage.displayName }
+                });
+                break;
+            }
+          }, index * 800); // Stagger the messages
+        });
+      }
+    }).catch(() => {
+      // Ignore errors from checking window content
+    });
+  });
 });
 
 // --- OAuth2 Token Management ---
@@ -650,8 +1035,9 @@ ipcMain.on('oauth-login', (event, platform) => {
         // Check for error parameter from Google OAuth
         if (error) {
           console.error('YouTube auth error:', error);
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end(`<h1>Authentication Failed</h1><p>Error: ${error}</p>`);
+          res.status(400).json({
+            error: 'Invalid timestamp format'
+          });
           server.close();
           event.sender.send('oauth-result', 'youtube', false);
           return;
@@ -1057,6 +1443,69 @@ ipcMain.handle('twitch-service-get-data', async () => {
   }
 });
 
+// Twitch Activity Scraper IPC handlers
+ipcMain.handle('twitch-activity-scraper-start', async () => {
+  try {
+    if (!twitchActivityScraper) {
+      twitchActivityScraper = new TwitchActivityScraper();
+    }
+    await twitchActivityScraper.start();
+    
+    // Small delay to ensure status is updated
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return { 
+      success: true, 
+      message: 'Twitch Activity Scraper started successfully' 
+    };
+  } catch (error) {
+    console.error('[Main] Failed to start Twitch Activity Scraper:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('twitch-activity-scraper-stop', async () => {
+  try {
+    if (twitchActivityScraper) {
+      await twitchActivityScraper.stop();
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('twitch-activity-scraper-get-events', async () => {
+  try {
+    if (!twitchActivityScraper) {
+      return { events: [], isRunning: false };
+    }
+    
+    // Get the latest scraped events
+    const events = twitchActivityScraper.getLatestEvents();
+    const isRunning = twitchActivityScraper.isRunning;
+    
+    return { events, isRunning };
+  } catch (error) {
+    console.error('[Main] Failed to get activity scraper events:', error);
+    return { events: [], isRunning: false };
+  }
+});
+
+ipcMain.handle('twitch-activity-scraper-navigate-manually', async () => {
+  try {
+    if (!twitchActivityScraper) {
+      return { success: false, error: 'Scraper not initialized' };
+    }
+    
+    const result = await twitchActivityScraper.navigateToActivityFeedManually();
+    return { success: result };
+  } catch (error) {
+    console.error('[Main] Failed to navigate manually:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Refresh authentication in overlay and chat windows
 ipcMain.handle('refresh-overlay-auth', async () => {
   // Tell overlay and chat windows to reload their tokens
@@ -1103,9 +1552,139 @@ ipcMain.handle('youtube-emoji-clear-cache', async () => {
   }
 });
 
+// Handle text color updates from settings and relay to chat window
+ipcMain.on('update-text-color', (event, textColor) => {
+  console.log('Relaying text color update to chat window:', textColor);
+  
+  // Save color
+  const colors = loadColors();
+  colors.TEXT_COLOR = textColor;
+  saveColors(colors);
+  
+  // Send to chat window
+  if (chatWin && !chatWin.isDestroyed()) {
+    chatWin.webContents.send('text-color-update', textColor);
+  }
+});
+
+// Handle background color updates from settings and relay to both windows
+ipcMain.on('update-background-color', (event, backgroundColor) => {
+  console.log('Relaying background color update to chat and overlay windows:', backgroundColor);
+  
+  // Save color
+  const colors = loadColors();
+  colors.BACKGROUND_COLOR = backgroundColor;
+  saveColors(colors);
+  
+  // Send to chat window
+  if (chatWin && !chatWin.isDestroyed()) {
+    chatWin.webContents.send('background-color-update', backgroundColor);
+  }
+  
+  // Send to overlay window
+  if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('background-color-update', backgroundColor);
+  }
+});
+
+// Handle events color updates from settings and relay to overlay and chat windows
+ipcMain.on('update-events-color', (event, eventsColor) => {
+  console.log('Relaying events color update to overlay and chat windows:', eventsColor);
+  
+  // Save color
+  const colors = loadColors();
+  colors.THEME_COLOR = eventsColor;
+  saveColors(colors);
+  
+  // Send to overlay window
+  if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('events-color-update', eventsColor);
+  }
+  
+  // Send to chat window
+  if (chatWin && !chatWin.isDestroyed()) {
+    chatWin.webContents.send('events-color-update', eventsColor);
+  }
+});
+
+// Get current colors for settings window
+ipcMain.handle('get-colors', () => {
+  return loadColors();
+});
+
 // Close settings window
 ipcMain.on('close-settings', () => {
   if (settingsWin) {
     settingsWin.close();
   }
+});
+
+// IPC handler for stream events from renderer
+ipcMain.on('stream-event', (event, eventData) => {
+  console.log('[Main] Received stream event:', eventData.type, 'from', eventData.platform);
+  
+  // Validate event data
+  if (!eventData.platform || !eventData.type) {
+    console.error('[Main] Invalid event data - missing platform or type');
+    return;
+  }
+  
+  // Add event to storage
+  eventStorage.addEvent(eventData);
+});
+
+// Handle test TikTok events
+ipcMain.on('test-overlay-events', (event, testEvents) => {
+  console.log('[Main] Received test TikTok events:', testEvents.length);
+  testEvents.forEach(testEvent => {
+    if (overlayWin && overlayWin.webContents) {
+      overlayWin.webContents.executeJavaScript(`
+        if (typeof handleTikTokMessage === 'function') {
+          handleTikTokMessage(${JSON.stringify(testEvent)});
+        }
+      `);
+    }
+  });
+});
+
+// Handle test Twitch events
+ipcMain.on('test-twitch-events', (event, testEvents) => {
+  console.log('[Main] Received test Twitch events:', testEvents.length);
+  testEvents.forEach(testEvent => {
+    if (overlayWin && overlayWin.webContents) {
+      const jsCode = `
+        console.log('[Overlay] Executing Twitch test event:', '${testEvent.type}');
+        if (typeof handleTwitchEvent === 'function') {
+          console.log('[Overlay] handleTwitchEvent function found, calling with:', ${JSON.stringify(testEvent.data)});
+          handleTwitchEvent('${testEvent.type}', ${JSON.stringify(testEvent.data)});
+        } else {
+          console.error('[Overlay] handleTwitchEvent function not found!');
+        }
+      `;
+      overlayWin.webContents.executeJavaScript(jsCode).catch(err => {
+        console.error('[Main] Error executing Twitch test event:', err);
+      });
+    }
+  });
+});
+
+// Handle test YouTube events
+ipcMain.on('test-youtube-events', (event, testEvents) => {
+  console.log('[Main] Received test YouTube events:', testEvents.length);
+  testEvents.forEach(testEvent => {
+    if (overlayWin && overlayWin.webContents) {
+      const jsCode = `
+        console.log('[Overlay] Executing YouTube test event:', '${testEvent.type}');
+        if (typeof handleYouTubeEvent === 'function') {
+          console.log('[Overlay] handleYouTubeEvent function found, calling with:', ${JSON.stringify(testEvent.data)});
+          handleYouTubeEvent('${testEvent.type}', ${JSON.stringify(testEvent.data)});
+        } else {
+          console.error('[Overlay] handleYouTubeEvent function not found!');
+        }
+      `;
+      overlayWin.webContents.executeJavaScript(jsCode).catch(err => {
+        console.error('[Main] Error executing YouTube test event:', err);
+      });
+    }
+  });
 });

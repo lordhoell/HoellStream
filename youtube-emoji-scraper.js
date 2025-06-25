@@ -8,19 +8,27 @@ class YouTubeEmojiScraper {
   constructor() {
     this.scrapingWindow = null;
     this.emojiCache = new Map(); // shortcode -> local file path
+    this.badgeCache = new Map(); // badge type -> local file path
     this.cacheDir = path.join(app.getPath('userData'), 'emoji-cache');
+    this.badgeCacheDir = path.join(app.getPath('userData'), 'badge-cache');
     this.mappingFile = path.join(this.cacheDir, 'emoji-mapping.json');
+    this.badgeMappingFile = path.join(this.badgeCacheDir, 'badge-mapping.json');
     this.backfillTimer = null;
     this.periodicTimer = null;
     this.onEmojiCacheUpdated = null; // Callback for when new emojis are found
+    this.onBadgeCacheUpdated = null; // Callback for when new badges are found
     
-    // Ensure cache directory exists
+    // Ensure cache directories exist
     this.initializeCacheDirectory();
     
     // Load existing emoji mappings
     this.loadEmojiMappings();
     
+    // Load existing badge mappings
+    this.loadBadgeMappings();
+    
     console.log('[YouTube Emoji Scraper] Initialized with cache directory:', this.cacheDir);
+    console.log('[YouTube Emoji Scraper] Badge cache directory:', this.badgeCacheDir);
   }
 
   // Initialize cache directory and load existing mappings
@@ -29,6 +37,10 @@ class YouTubeEmojiScraper {
       if (!fs.existsSync(this.cacheDir)) {
         fs.mkdirSync(this.cacheDir, { recursive: true });
         console.log('[YouTube Emoji Scraper] Created cache directory:', this.cacheDir);
+      }
+      if (!fs.existsSync(this.badgeCacheDir)) {
+        fs.mkdirSync(this.badgeCacheDir, { recursive: true });
+        console.log('[YouTube Emoji Scraper] Created badge cache directory:', this.badgeCacheDir);
       }
     } catch (error) {
       console.error('[YouTube Emoji Scraper] Failed to create cache directory:', error);
@@ -56,6 +68,27 @@ class YouTubeEmojiScraper {
     }
   }
 
+  // Load existing badge mappings from disk
+  loadBadgeMappings() {
+    try {
+      if (fs.existsSync(this.badgeMappingFile)) {
+        const mappingData = fs.readFileSync(this.badgeMappingFile, 'utf8');
+        const mappings = JSON.parse(mappingData);
+        
+        // Convert to Map and verify files still exist
+        for (const [badgeType, filePath] of Object.entries(mappings)) {
+          if (fs.existsSync(filePath)) {
+            this.badgeCache.set(badgeType, filePath);
+          }
+        }
+        
+        console.log(`[YouTube Emoji Scraper] Loaded ${this.badgeCache.size} cached badges`);
+      }
+    } catch (error) {
+      console.error('[YouTube Emoji Scraper] Failed to load badge mappings:', error);
+    }
+  }
+
   // Save emoji mappings to disk
   saveEmojiMappings() {
     try {
@@ -64,6 +97,17 @@ class YouTubeEmojiScraper {
       console.log(`[YouTube Emoji Scraper] Saved ${this.emojiCache.size} emoji mappings`);
     } catch (error) {
       console.error('[YouTube Emoji Scraper] Failed to save emoji mappings:', error);
+    }
+  }
+
+  // Save badge mappings to disk
+  saveBadgeMappings() {
+    try {
+      const mappings = Object.fromEntries(this.badgeCache);
+      fs.writeFileSync(this.badgeMappingFile, JSON.stringify(mappings, null, 2));
+      console.log(`[YouTube Emoji Scraper] Saved ${this.badgeCache.size} badge mappings`);
+    } catch (error) {
+      console.error('[YouTube Emoji Scraper] Failed to save badge mappings:', error);
     }
   }
 
@@ -140,6 +184,11 @@ class YouTubeEmojiScraper {
       const emojiData = await this.extractEmojiData();
       console.log(`[YouTube Emoji Scraper] Extraction complete. Found ${emojiData.length} emojis:`, emojiData);
       
+      // Extract badge data
+      console.log('[YouTube Emoji Scraper] Starting badge extraction...');
+      const badgeData = await this.extractBadgeData();
+      console.log(`[YouTube Emoji Scraper] Badge extraction complete. Found ${badgeData.length} badges:`, badgeData);
+      
       if (emojiData.length === 0) {
         console.warn('[YouTube Emoji Scraper] No emojis found - this might indicate the emoji picker could not be opened or found');
         return {
@@ -147,7 +196,10 @@ class YouTubeEmojiScraper {
           error: 'No emojis found. Make sure the stream is live and has custom emojis.',
           emojisFound: 0,
           emojisNew: 0,
-          totalCached: this.emojiCache.size
+          badgesFound: badgeData.length,
+          badgesNew: badgeData.filter(b => !this.badgeCache.has(b.type)).length,
+          totalCached: this.emojiCache.size,
+          totalBadgesCached: this.badgeCache.size
         };
       }
       
@@ -155,6 +207,18 @@ class YouTubeEmojiScraper {
       console.log('[YouTube Emoji Scraper] Starting emoji caching...');
       await this.cacheEmojis(emojiData);
       console.log('[YouTube Emoji Scraper] Emoji caching complete');
+      
+      // Download and cache badges
+      if (badgeData.length > 0) {
+        console.log('[YouTube Emoji Scraper] Starting badge caching...');
+        await this.cacheBadges(badgeData);
+        console.log('[YouTube Emoji Scraper] Badge caching complete');
+        
+        // Notify callback if provided
+        if (this.onBadgeCacheUpdated) {
+          this.onBadgeCacheUpdated(badgeData);
+        }
+      }
       
       // Save mappings
       this.saveEmojiMappings();
@@ -164,7 +228,10 @@ class YouTubeEmojiScraper {
         success: true,
         emojisFound: emojiData.length,
         emojisNew: emojiData.filter(e => !this.emojiCache.has(e.shortcode)).length,
-        totalCached: this.emojiCache.size
+        badgesFound: badgeData.length,
+        badgesNew: badgeData.filter(b => !this.badgeCache.has(b.type)).length,
+        totalCached: this.emojiCache.size,
+        totalBadgesCached: this.badgeCache.size
       };
       
     } catch (error) {
@@ -173,7 +240,8 @@ class YouTubeEmojiScraper {
       return {
         success: false,
         error: error.message,
-        totalCached: this.emojiCache.size
+        totalCached: this.emojiCache.size,
+        totalBadgesCached: this.badgeCache.size
       };
     }
   }
@@ -427,6 +495,95 @@ class YouTubeEmojiScraper {
     `);
   }
 
+  // Extract badge data from the page
+  async extractBadgeData() {
+    return await this.scrapingWindow.webContents.executeJavaScript(`
+      (async () => {
+        console.log('[Badge Scraper] Starting badge extraction...');
+        
+        // Wait for page to load
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const badges = [];
+        const seenBadges = new Set();
+        
+        // Look for badge containers
+        const badgeContainers = document.querySelectorAll('yt-live-chat-author-badge-renderer');
+        console.log('[Badge Scraper] Found ' + badgeContainers.length + ' badge containers');
+        
+        for (const container of badgeContainers) {
+          // Check for image badges (membership)
+          const imgBadges = container.querySelectorAll('img');
+          for (const img of imgBadges) {
+            const src = img.src;
+            const alt = img.alt || '';
+            
+            if (src && !seenBadges.has(src)) {
+              seenBadges.add(src);
+              
+              // Determine badge type from alt text
+              let badgeType = 'unknown';
+              const altLower = alt.toLowerCase();
+              
+              if (altLower.includes('member') || altLower.includes('sponsor')) {
+                badgeType = 'member';
+              }
+              
+              badges.push({
+                type: badgeType,
+                format: 'image',
+                url: src,
+                alt: alt,
+                width: img.width || 16,
+                height: img.height || 16
+              });
+              
+              console.log('[Badge Scraper] Found image badge: ' + badgeType + ' - ' + src);
+            }
+          }
+          
+          // Check for SVG badges (moderator)
+          const svgBadges = container.querySelectorAll('svg');
+          for (const svg of svgBadges) {
+            const viewBox = svg.getAttribute('viewBox');
+            const pathElement = svg.querySelector('path');
+            
+            if (pathElement && viewBox === '0 0 16 16') {
+              const pathData = pathElement.getAttribute('d');
+              
+              // Create unique identifier for this SVG
+              const svgId = 'svg_' + pathData.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
+              
+              if (!seenBadges.has(svgId)) {
+                seenBadges.add(svgId);
+                
+                // Determine badge type from path data
+                let badgeType = 'unknown';
+                if (pathData && pathData.includes('M9.64589146')) {
+                  badgeType = 'moderator';
+                }
+                
+                badges.push({
+                  type: badgeType,
+                  format: 'svg',
+                  svgData: svg.outerHTML,
+                  pathData: pathData,
+                  viewBox: viewBox,
+                  id: svgId
+                });
+                
+                console.log('[Badge Scraper] Found SVG badge: ' + badgeType + ' - ' + svgId);
+              }
+            }
+          }
+        }
+        
+        console.log('[Badge Scraper] Extraction complete. Found ' + badges.length + ' unique badges');
+        return badges;
+      })();
+    `);
+  }
+
   // Download and cache emojis locally
   async cacheEmojis(emojiData) {
     const downloadPromises = emojiData.map(async (emoji) => {
@@ -479,6 +636,141 @@ class YouTubeEmojiScraper {
         });
         
       }).on('error', reject);
+    });
+  }
+
+  // Download and cache badges locally
+  async cacheBadges(badgeData) {
+    const downloadPromises = badgeData.map(async (badge) => {
+      try {
+        // Skip if already cached
+        if (this.badgeCache.has(badge.type)) {
+          return;
+        }
+        
+        const filename = `${badge.type}.png`;
+        const localPath = path.join(this.badgeCacheDir, filename);
+        
+        if (badge.format === 'image') {
+          // Download image badge
+          await this.downloadBadge(badge.url, localPath);
+        } else if (badge.format === 'svg') {
+          // Convert SVG to PNG
+          await this.convertSvgToPng(badge.svgData, localPath);
+        }
+        
+        // Add to cache
+        this.badgeCache.set(badge.type, localPath);
+        console.log(`[YouTube Emoji Scraper] Cached badge: ${badge.type} -> ${localPath}`);
+        
+      } catch (error) {
+        console.error(`[YouTube Emoji Scraper] Failed to cache badge ${badge.type}:`, error);
+      }
+    });
+    
+    await Promise.all(downloadPromises);
+    
+    // Save mappings
+    this.saveBadgeMappings();
+    
+    console.log(`[YouTube Emoji Scraper] Cached ${downloadPromises.length} badges`);
+  }
+
+  // Download badge image from URL
+  async downloadBadge(url, localPath) {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(localPath);
+      
+      https.get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          return;
+        }
+        
+        response.pipe(file);
+        
+        file.on('finish', () => {
+          file.close();
+          resolve();
+        });
+        
+        file.on('error', (error) => {
+          fs.unlink(localPath, () => {}); // Delete partial file
+          reject(error);
+        });
+        
+      }).on('error', reject);
+    });
+  }
+
+  // Convert SVG data to PNG file
+  async convertSvgToPng(svgData, localPath) {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a simple SVG to PNG conversion using canvas
+        // Since we're in Node.js, we'll use a simple approach
+        // For now, save the SVG data as a file and convert later
+        
+        // Extract the SVG content and create a proper SVG file
+        const svgContent = svgData.includes('<svg') ? svgData : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">${svgData}</svg>`;
+        
+        // For now, save as SVG and we'll convert to PNG using the browser
+        const svgPath = localPath.replace('.png', '.svg');
+        fs.writeFileSync(svgPath, svgContent);
+        
+        // Use the scraping window to convert SVG to PNG
+        this.convertSvgToPngInBrowser(svgContent, localPath)
+          .then(resolve)
+          .catch(reject);
+        
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  // Convert SVG to PNG using browser canvas
+  async convertSvgToPngInBrowser(svgContent, localPath) {
+    if (!this.scrapingWindow || this.scrapingWindow.isDestroyed()) {
+      throw new Error('Scraping window not available for SVG conversion');
+    }
+    
+    return await this.scrapingWindow.webContents.executeJavaScript(`
+      (async () => {
+        const svgContent = \`${svgContent.replace(/`/g, '\\`')}\`;
+        
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        
+        // Create image from SVG
+        const img = new Image();
+        const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(svgBlob);
+        
+        return new Promise((resolve, reject) => {
+          img.onload = () => {
+            // Draw SVG to canvas
+            ctx.drawImage(img, 0, 0, 16, 16);
+            
+            // Convert to PNG data URL
+            const pngDataUrl = canvas.toDataURL('image/png');
+            URL.revokeObjectURL(url);
+            
+            resolve(pngDataUrl);
+          };
+          
+          img.onerror = reject;
+          img.src = url;
+        });
+      })();
+    `).then(pngDataUrl => {
+      // Convert data URL to buffer and save
+      const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      fs.writeFileSync(localPath, buffer);
     });
   }
 
@@ -537,21 +829,28 @@ class YouTubeEmojiScraper {
     try {
       console.log('[YouTube Emoji Scraper] Starting backfill scraping...');
       const currentCacheSize = this.emojiCache.size;
+      const currentBadgeCacheSize = this.badgeCache.size;
       
       // Perform scraping
       await this.scrapeEmojis();
       
       const newCacheSize = this.emojiCache.size;
+      const newBadgeCacheSize = this.badgeCache.size;
       const newEmojis = newCacheSize - currentCacheSize;
+      const newBadges = newBadgeCacheSize - currentBadgeCacheSize;
       
-      if (newEmojis > 0) {
-        console.log(`[YouTube Emoji Scraper] Backfill scraping found ${newEmojis} new emojis`);
+      if (newEmojis > 0 || newBadges > 0) {
+        console.log(`[YouTube Emoji Scraper] Backfill scraping found ${newEmojis} new emojis and ${newBadges} new badges`);
         // Notify that new emojis were found
-        if (this.onEmojiCacheUpdated) {
+        if (this.onEmojiCacheUpdated && newEmojis > 0) {
           this.onEmojiCacheUpdated(newEmojis);
         }
+        // Notify that new badges were found
+        if (this.onBadgeCacheUpdated && newBadges > 0) {
+          this.onBadgeCacheUpdated(newBadges);
+        }
       } else {
-        console.log('[YouTube Emoji Scraper] Backfill scraping completed - no new emojis found');
+        console.log('[YouTube Emoji Scraper] Backfill scraping completed - no new emojis or badges found');
       }
     } catch (error) {
       console.error('[YouTube Emoji Scraper] Backfill scraping failed:', error);
@@ -568,19 +867,42 @@ class YouTubeEmojiScraper {
     return this.emojiCache.get(shortcode);
   }
 
+  // Get cached badge path
+  getCachedBadge(badgeType) {
+    return this.badgeCache.get(badgeType);
+  }
+
+  // Get badge URL for use in HTML
+  getBadgeUrl(badgeType) {
+    const localPath = this.badgeCache.get(badgeType);
+    if (localPath && fs.existsSync(localPath)) {
+      // Convert to file:// URL for use in HTML
+      return `file://${localPath.replace(/\\/g, '/')}`;
+    }
+    return null;
+  }
+
+  // Set callback for when badge cache is updated
+  setBadgeCacheUpdateCallback(callback) {
+    this.onBadgeCacheUpdated = callback;
+  }
+
   // Get cache statistics
   getCacheStats() {
     return {
       totalEmojis: this.emojiCache.size,
+      totalBadges: this.badgeCache.size,
       cacheDirectory: this.cacheDir,
-      mappingFile: this.mappingFile
+      badgeCacheDirectory: this.badgeCacheDir,
+      mappingFile: this.mappingFile,
+      badgeMappingFile: this.badgeMappingFile
     };
   }
 
   // Clear emoji cache
   clearCache() {
     try {
-      // Remove all cached files
+      // Remove all cached emoji files
       if (fs.existsSync(this.cacheDir)) {
         const files = fs.readdirSync(this.cacheDir);
         for (const file of files) {
@@ -588,10 +910,19 @@ class YouTubeEmojiScraper {
         }
       }
       
-      // Clear memory cache
-      this.emojiCache.clear();
+      // Remove all cached badge files
+      if (fs.existsSync(this.badgeCacheDir)) {
+        const files = fs.readdirSync(this.badgeCacheDir);
+        for (const file of files) {
+          fs.unlinkSync(path.join(this.badgeCacheDir, file));
+        }
+      }
       
-      console.log('[YouTube Emoji Scraper] Cache cleared');
+      // Clear memory caches
+      this.emojiCache.clear();
+      this.badgeCache.clear();
+      
+      console.log('[YouTube Emoji Scraper] Emoji and badge caches cleared');
       return { success: true };
     } catch (error) {
       console.error('[YouTube Emoji Scraper] Failed to clear cache:', error);

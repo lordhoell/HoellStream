@@ -26,6 +26,11 @@ class TwitchAPIService {
     // Avatar cache to reduce API calls
     this.avatarCache = new Map(); // Map of username -> { avatar, timestamp }
     
+    // Badge cache for official Twitch badge images
+    this.badgeCache = new Map(); // Map of set_id -> Map of id -> { image_url, title, description }
+    this.badgeCacheTimestamp = null;
+    this.BADGE_CACHE_TTL = 3600000; // 1 hour cache for badges
+    
     // Gift subscription tracking (like YouTube gift memberships)
     this.giftQueue = new Map(); // Map of gifterUserId -> { name, avatar, remainingGifts, timestamp }
     
@@ -128,6 +133,9 @@ class TwitchAPIService {
         if (userData.data && userData.data.length > 0) {
           this.channelId = userData.data[0].id;
           console.log(`[Twitch API Service] Channel ID: ${this.channelId}`);
+          
+          // Fetch badge data now that we have channel ID
+          await this.fetchBadges();
         }
       } else {
         console.warn('[Twitch API Service] Failed to get channel ID - follower detection may not work');
@@ -549,7 +557,8 @@ class TwitchAPIService {
     this.broadcastChatMessage({
       username,
       message: parsedText, // Send the actual text content, not the message object
-      tags: message.tags
+      tags: message.tags,
+      badgeData: this.extractBadgeData(message.tags) // Add badge data
     });
   }
 
@@ -896,6 +905,36 @@ class TwitchAPIService {
     return parsedMessage;
   }
 
+  // Extract badge data from IRC tags for chat window
+  extractBadgeData(tags) {
+    const badgeData = [];
+    
+    // Parse badges tag (format: "moderator/1,subscriber/12,vip/1")
+    const badgesTag = tags.badges || '';
+    const badgesList = badgesTag.split(',').filter(b => b.trim());
+    
+    badgesList.forEach(badgeStr => {
+      const [setId, id] = badgeStr.split('/');
+      if (setId && id) {
+        const imageUrl = this.getBadgeImageUrl(setId, id, '2x');
+        const badgeInfo = this.getBadgeInfo(setId, id);
+        
+        if (imageUrl && badgeInfo) {
+          badgeData.push({
+            setId: setId,
+            id: id,
+            imageUrl: imageUrl,
+            title: badgeInfo.title,
+            description: badgeInfo.description
+          });
+        }
+      }
+    });
+    
+    console.log(`[Twitch API Service] Extracted ${badgeData.length} badge images for user`);
+    return badgeData;
+  }
+
   // Get current data (for IPC requests)
   getCurrentData() {
     return {
@@ -1014,6 +1053,106 @@ class TwitchAPIService {
     } catch (error) {
       console.error('[Twitch API Service] Error fetching followers:', error);
     }
+  }
+
+  // Fetch and cache Twitch badge images
+  async fetchBadges() {
+    try {
+      const now = Date.now();
+      
+      // Check if cache is still valid
+      if (this.badgeCacheTimestamp && (now - this.badgeCacheTimestamp) < this.BADGE_CACHE_TTL) {
+        console.log('[Twitch API Service] Using cached badges');
+        return;
+      }
+
+      console.log('[Twitch API Service] Fetching fresh badge data...');
+      
+      const tokens = loadTokens();
+      if (!tokens?.twitch?.access_token) {
+        console.warn('[Twitch API Service] No access token for badge fetching');
+        return;
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${tokens.twitch.access_token}`,
+        'Client-Id': loadConfig().TWITCH_CLIENT_ID || process.env.TWITCH_CLIENT_ID || 'o2z2j4tesfnnq8l3ygjvsf9xu7ngdm'
+      };
+
+      // Fetch global badges
+      const globalResponse = await fetch('https://api.twitch.tv/helix/chat/badges/global', { headers });
+      if (globalResponse.ok) {
+        const globalData = await globalResponse.json();
+        this.processBadgeData(globalData.data, 'global');
+      }
+
+      // Fetch channel-specific badges if we have a channel ID
+      if (this.channelId) {
+        const channelResponse = await fetch(`https://api.twitch.tv/helix/chat/badges?broadcaster_id=${this.channelId}`, { headers });
+        if (channelResponse.ok) {
+          const channelData = await channelResponse.json();
+          this.processBadgeData(channelData.data, 'channel');
+        }
+      }
+
+      this.badgeCacheTimestamp = now;
+      console.log(`[Twitch API Service] Badge cache updated with ${this.badgeCache.size} badge sets`);
+
+    } catch (error) {
+      console.error('[Twitch API Service] Error fetching badges:', error);
+    }
+  }
+
+  // Process badge data from API response
+  processBadgeData(badgeData, source) {
+    if (!badgeData || !Array.isArray(badgeData)) return;
+
+    badgeData.forEach(badgeSet => {
+      const setId = badgeSet.set_id;
+      
+      if (!this.badgeCache.has(setId)) {
+        this.badgeCache.set(setId, new Map());
+      }
+      
+      const versionMap = this.badgeCache.get(setId);
+      
+      badgeSet.versions.forEach(version => {
+        versionMap.set(version.id, {
+          image_url_1x: version.image_url_1x,
+          image_url_2x: version.image_url_2x,
+          image_url_4x: version.image_url_4x,
+          title: version.title,
+          description: version.description,
+          source: source
+        });
+      });
+      
+      console.log(`[Twitch API Service] Cached ${badgeSet.versions.length} versions for ${setId} badge (${source})`);
+    });
+  }
+
+  // Get badge image URL for a specific badge
+  getBadgeImageUrl(setId, id, size = '2x') {
+    const badgeSet = this.badgeCache.get(setId);
+    if (!badgeSet) return null;
+    
+    const badge = badgeSet.get(id);
+    if (!badge) return null;
+    
+    // Return the appropriate size image URL
+    switch (size) {
+      case '1x': return badge.image_url_1x;
+      case '4x': return badge.image_url_4x;
+      default: return badge.image_url_2x;
+    }
+  }
+
+  // Get badge info for a specific badge
+  getBadgeInfo(setId, id) {
+    const badgeSet = this.badgeCache.get(setId);
+    if (!badgeSet) return null;
+    
+    return badgeSet.get(id) || null;
   }
 }
 

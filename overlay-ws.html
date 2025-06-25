@@ -11,7 +11,9 @@
       height: 100%; margin: 0; padding: 0;
       background: #000; color: #B266FF;
       font-family: 'Press Start 2P', sans-serif;
+      font-size: clamp(8px, 1.2vw, 16px);
       display: flex; flex-direction: column; overflow: hidden;
+      min-width: 600px; min-height: 400px;
     }
     .stats-wrapper {
       display: flex;
@@ -24,8 +26,8 @@
     }
     .platform-row {
       display: grid;
-      grid-template-columns: 40px repeat(5, 180px);
-      column-gap: 24px;
+      grid-template-columns: 3.5vw repeat(5, 15vw);
+      column-gap: 2vw;
       margin-bottom: 0.5em;
       justify-content: center;
       white-space: nowrap;
@@ -33,74 +35,87 @@
     /* Platform icon container with status indicator */
     .platform-icon-container {
       position: relative;
-      width: 40px; height: 40px;
+      width: 3.5vw; 
+      height: 4.7vw;
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-right: 8px;
+      margin-top: 0.0vw;
+      background: #8000FF;
+      border-radius: 6px;
+      border: 2px solid #8000FF;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      z-index: 1;
     }
     
     .platform-icon-inline {
-      width: 32px; height: 32px;
-      filter: drop-shadow(0 0 2px #8000FF);
+      width: 2.5vw; 
+      height: 2.5vw;
+      filter: none;
       z-index: 2;
-      margin-top: 32px;
     }
     
-    /* Connection status indicator */
+    /* Connection status indicator - now changes the box background */
     .connection-status {
       position: absolute;
       width: 100%;
       height: 100%;
-      border-radius: 50%;
+      border-radius: 6px;
       z-index: 1;
       transition: background-color 0.3s ease, box-shadow 0.3s ease;
-      margin-top: 32px;
     }
     .status-indicator {
       display: inline-block;
-      width: 10px;
-      height: 10px;
+      width: 1vw;
+      height: 1vw;
       border-radius: 50%;
-      margin-right: 5px;
+      margin-right: 0.5vw;
     }
     .status-connected {
-      background-color: #2ecc71;
+      background-color: rgba(46, 204, 113, 0.8) !important;
+      border: 1px solid #2ecc71 !important;
     }
     .status-disconnected {
-      background-color: #e74c3c;
+      background-color: rgba(231, 76, 60, 0.8) !important;
+      border: 1px solid #e74c3c !important;
     }
     .status-scheduled {
-      background-color: rgba(243, 156, 18, 0.3);
-      box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+      background-color: rgba(243, 156, 18, 0.8) !important;
+      border: 1px solid #f39c12 !important;
     }
-    /* Status indicator styles for the connection icons */
-    .status-connected {
-      background-color: rgba(0, 255, 0, 0.3);
-      box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
-    }
-    
-    .status-disconnected {
-      background-color: rgba(255, 0, 0, 0.3);
-      box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+    /* Hover effects for clickable platform icons */
+    .platform-icon-container.clickable:hover {
+      transform: scale(1.05);
+      filter: brightness(1.2);
+      cursor: pointer;
     }
     
-    .status-scheduled {
-      background-color: rgba(243, 156, 18, 0.3);
-      box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    .platform-icon-container.clickable:active {
+      transform: scale(0.95);
     }
+    
     .stat {
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      width: 180px; height: 60px;
+      width: 15vw; height: 4vw;
       padding: 0.4em;
       border: 2px solid #8000FF; border-radius: 6px;
       background: rgba(128,0,255,0.1);
       box-shadow: inset 0 0 4px #000;
       text-align: center;
     }
-    .stat label { color: #B266FF; font-size: 0.9em; margin-bottom: 0.2em; white-space: nowrap; }
-    .stat span  { color: #FFF; font-weight: bold; font-size: 1.2em; }
+    .stat label { color: #B266FF; font-size: clamp(6px, 0.9vw, 14px); margin-bottom: 0.2em; white-space: nowrap; }
+    .stat span  { color: #FFF; font-weight: bold; font-size: clamp(8px, 1.4vw, 18px); }
+    
+    /* First stat box in each row connects to platform icon */
+    .platform-row .stat:first-of-type {
+      border-radius: 6px;
+      border: 2px solid #8000FF;
+      padding: 0.4em;
+      position: relative;
+      z-index: 1;
+    }
+    
     .stat.polling { padding: 0.4em; }
     .stat.polling button {
       width: 100%; font-family: 'Press Start 2P'; font-size: 0.75em;
@@ -113,12 +128,31 @@
       position: sticky; top: 0;
       background: rgba(0,0,0,0.95);
       padding: 0.5em; border-bottom: 1px solid #8000FF;
-      text-align: center; font-size: 1.25em; font-weight: bold;
+      text-align: center; font-size: clamp(10px, 1.25vw, 20px); font-weight: bold;
       z-index: 10;
     }
     .feed {
       flex:1; overflow-y:auto;
-      padding:0.5em; width:90vw; margin:0 auto;
+      padding: 0 0 0 3.5vw; width: 87vw; margin:0 auto;
+    }
+    /* Make scrollbar invisible but functional */
+    .feed::-webkit-scrollbar {
+      width: 12px;
+    }
+    .feed::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .feed::-webkit-scrollbar-thumb {
+      background: transparent;
+    }
+    .feed::-webkit-scrollbar-thumb:hover {
+      background: transparent;
+    }
+    
+    /* Firefox scrollbar styling */
+    .feed {
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* Internet Explorer 10+ */
     }
     .item {
       position: relative;
@@ -130,7 +164,7 @@
       border-radius: 0 4px 4px 0;
       width: 100%;
       min-width: 0;
-      min-height: 44px;
+      min-height: 4vw;
       background: #000;
       margin: 0;
       box-sizing: border-box;
@@ -147,16 +181,16 @@
       margin-left: auto;
       white-space: nowrap;
     }
-    .avatar { width:36px; height:36px; border-radius:50%; margin-right:0.5em; }
+    .avatar { width:3vw; height:3vw; border-radius:50%; margin-right:0.5em; }
     .username { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-right:0.5em; }
     .details { text-align:right; font-size:0.9em; white-space:nowrap; }
 /* make TikTok gift pics slightly wider and better centered in the event boxes */
 .details img.icon, .gift-icon, .details img, img.gift-icon, .item img, #feed img {
-  width: 32px !important;
-  height: 32px !important;
+  width: 2.5vw !important;
+  height: 2.5vw !important;
   margin-right: 0.5em;
-  max-width: 32px !important;
-  max-height: 32px !important;
+  max-width: 2.5vw !important;
+  max-height: 2.5vw !important;
   object-fit: contain !important;
   vertical-align: middle !important;
   display: inline-block !important;
@@ -164,8 +198,8 @@
 
 /* Catch any remaining images in the overlay */
 #overlay img, .overlay img {
-  max-width: 32px !important;
-  max-height: 32px !important;
+  max-width: 2.5vw !important;
+  max-height: 2.5vw !important;
   width: auto !important;
   height: auto !important;
   vertical-align: middle !important;
@@ -175,16 +209,6 @@
       cursor: pointer;
       transition: transform 0.1s ease, filter 0.2s ease;
       user-select: none;
-    }
-    
-    .platform-icon-container.clickable:hover {
-      transform: scale(1.05);
-      filter: brightness(1.2);
-    }
-    
-    .platform-icon-container.clickable:active {
-      transform: scale(0.95);
-      transition: transform 0.05s ease;
     }
     
     /* Loading animation for YouTube icon */
@@ -301,9 +325,9 @@
     .event-row {
       display: flex;
       align-items: stretch;
-      width: 80vw;
-      max-width: 900px;
-      margin: 0.5em auto;
+      width: 100%;
+      max-width: 100%;
+      margin: 0.5em 0;
       box-sizing: border-box;
       position: relative;
       z-index: 1;
@@ -314,29 +338,27 @@
       justify-content: center;
       background: #8000FF;
       border-radius: 6px 0 0 6px;
-      width: 44px;
-      min-width: 44px;
-      margin-right: 0;
-      margin-left: 0;
+      width: 3.5vw;
+      min-width: 3.5vw;
       height: auto;
       z-index: 3; /* Ensure it's above animations */
       position: relative; /* Needed for z-index to work */
     }
     .provider-icon-box img {
-      width: 28px;
-      height: 28px;
+      width: 2.5vw;
+      height: 2.5vw;
       filter: none;
     }
 
-    .avatar { width:36px; height:36px; border-radius:50%; margin-right:0.5em; }
+    .avatar { width:3vw; height:3vw; border-radius:50%; margin-right:0.5em; }
     .gift-membership {
-      min-height: 44px;
+      min-height: 4vw;
     }
     .superchat {
-      min-height: 44px;
+      min-height: 4vw;
     }
     .supersticker {
-      min-height: 44px;
+      min-height: 4vw;
     }
   </style>
 </head>
@@ -387,6 +409,36 @@
   // Load both config and OAuth tokens
   const CONFIG = await window.electron.ipcRenderer.invoke('load-config');
   let TOKENS = await window.electron.ipcRenderer.invoke('get-tokens');
+  
+  // Apply font sizes from config
+  if (CONFIG) {
+    // Apply overlay event box size
+    if (CONFIG.OVERLAY_FONT_SIZE) {
+      const style = document.createElement('style');
+      style.setAttribute('data-dynamic-font', 'true');
+      style.textContent = `
+        .item { 
+          min-height: calc(44px * ${CONFIG.OVERLAY_FONT_SIZE}) !important;
+          padding: calc(0.5em * ${CONFIG.OVERLAY_FONT_SIZE}) !important;
+        }
+        .item .left-content {
+          font-size: calc(1em * ${CONFIG.OVERLAY_FONT_SIZE}) !important;
+        }
+        .item .right-content {
+          font-size: calc(1em * ${CONFIG.OVERLAY_FONT_SIZE}) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Apply stats font size
+    if (CONFIG.STATS_FONT_SIZE) {
+      const style = document.createElement('style');
+      style.setAttribute('data-dynamic-font', 'true');
+      style.textContent = `.stat span { font-size: ${CONFIG.STATS_FONT_SIZE}em !important; }`;
+      document.head.appendChild(style);
+    }
+  }
 
   // Initialization flag to prevent operations during startup
   let isInitialized = false;
@@ -2052,9 +2104,9 @@
       console.error('▶ TikTok WebSocket error:', error);
     };
 
-    tkWs.onmessage = e => {
-      const m = JSON.parse(e.data);
-      const d = m.data;
+    // Global function to handle TikTok messages (for both WebSocket and test events)
+    window.handleTikTokMessage = function(m) {
+      const d = m.data || m;
       if (m.event === 'roomUser') {
         $('#tiktokViewers').text(d.viewerCount);
       } else if (m.event === 'like') {
@@ -2120,14 +2172,18 @@
         const uniqueGiftId = `${displayName}-${d.giftId}-${Date.now()}`;
         
         // Create HTML for the gift
-        const giftHtml = `sent ${count}× ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''} <span style='font-size:0.85em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
+        const giftHtml = `sent ${count}× ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''}<br><span style='font-size:0.7em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
         
         // Always add a new item for each gift
         addItem({
           avatar: d.profilePictureUrl || d.avatarUrl, 
           name: displayName, 
           html: giftHtml, 
-          provider: 'tiktok'
+          provider: 'tiktok',
+          giftImageUrl: icon, // Pass the gift image URL
+          giftName: d.giftName,
+          giftCount: count,
+          diamondCount: totalDiamonds
         });
         
         // Update diamond counter
@@ -2137,6 +2193,12 @@
         // Scroll to bottom to show the new gift
         $('.feed').scrollTop($('.feed')[0].scrollHeight);
       }
+    };
+    
+    // Wire up the WebSocket to use the handler
+    tkWs.onmessage = e => {
+      const m = JSON.parse(e.data);
+      window.handleTikTokMessage(m);
     };
   } catch(err) { 
     console.error('TikTok WS error', err);
@@ -2218,10 +2280,10 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     
     switch(eventType) {
       case 'superchat':
-        html = `SUPER CHAT <span style="color:#FFD700">${eventData.amount || ''}</span>`;
+        html = `SUPER CHAT<br><span style="font-size:0.7em;color:#FFD700">(${eventData.amount || ''})</span>`;
         break;
       case 'supersticker':
-        html = `SUPER STICKER <span style="color:#FFD700">${eventData.amount || ''}</span>`;
+        html = `SUPER STICKER<br><span style="font-size:0.7em;color:#FFD700">(${eventData.amount || ''})</span>`;
         break;
       case 'sponsor':
         if (eventData.gifted) {
@@ -2305,6 +2367,9 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     }
   }
 
+  // Make functions globally accessible
+  window.handleYouTubeEvent = handleYouTubeEvent;
+
   // Function to handle Twitch events
   function handleTwitchEvent(eventType, eventData) {
     console.log(`[Overlay] Handling Twitch event: ${eventType}`, eventData);
@@ -2341,7 +2406,7 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
         }
         break;
       case 'bits':
-        html = `CHEERED <span style="color:#9C3EE8">${eventData.amount || eventData.bits} bits</span>`;
+        html = `CHEERED<br><span style="font-size:0.7em;color:#FFD700">(${eventData.amount || eventData.bits} bits)</span>`;
         break;
       case 'raid':
         html = `RAID with <span style="color:#0F9D58">${eventData.viewerCount || eventData.viewers} viewers</span>`;
@@ -2375,7 +2440,10 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
       tR += (eventData.viewerCount || eventData.viewers || 0); document.getElementById('twitchRaids').textContent = tR;
     }
   }
-  
+
+  // Make functions globally accessible
+  window.handleTwitchEvent = handleTwitchEvent;
+
   // Token reload listener for auth refresh
   window.electron.ipcRenderer.on('reload-tokens', async () => {
     console.log('🔄 [Overlay] Reloading tokens from secure storage...');
@@ -2488,6 +2556,157 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     }
   }
 
+  // Function to send event to API via IPC
+  function sendEventToAPI(item) {
+    try {
+      // Extract event type from the HTML content
+      let eventType = 'unknown';
+      let amount = null;
+      let message = null;
+      
+      const htmlLower = item.html.toLowerCase();
+      
+      // Twitch events
+      if (item.provider === 'twitch') {
+        if (htmlLower.includes('followed')) eventType = 'follow';
+        else if (htmlLower.includes('gifted') && htmlLower.includes('subs')) eventType = 'gift_purchase';
+        else if (htmlLower.includes('gift sub')) eventType = 'gift_subscription';
+        else if (htmlLower.includes('new subscriber') || htmlLower.includes('resub') || htmlLower.includes('subscriber')) eventType = 'subscription';
+        else if (htmlLower.includes('cheered')) {
+          eventType = 'bits';
+          // Extract bits amount from "CHEERED<br><span>(X bits)</span>" pattern
+          const bitsMatch = item.html.match(/\((\d+)\s*bits\)/i);
+          if (bitsMatch) amount = parseInt(bitsMatch[1]);
+        }
+        else if (htmlLower.includes('raid')) {
+          eventType = 'raid';
+          // Extract viewer count from "RAID with X viewers" pattern
+          const viewerMatch = item.html.match(/(\d+)\s*viewers/i);
+          if (viewerMatch) amount = parseInt(viewerMatch[1]);
+        }
+        else if (htmlLower.includes('redeemed')) eventType = 'channel_point_redemption';
+      }
+      // YouTube events
+      else if (item.provider === 'youtube') {
+        if (htmlLower.includes('super chat')) {
+          eventType = 'superchat';
+          // Extract amount from "SUPER CHAT<br><span>(amount)</span>" pattern
+          const amountMatch = item.html.match(/\(([^)]+)\)/i);
+          if (amountMatch) {
+            message = amountMatch[1]; // Store amount as message for display
+            // Also try to extract numeric amount for potential future use
+            const numericMatch = amountMatch[1].match(/[\d.]+/);
+            if (numericMatch) amount = parseFloat(numericMatch[0]);
+          }
+        }
+        else if (htmlLower.includes('super sticker')) {
+          eventType = 'supersticker';
+          // Extract amount from "SUPER STICKER<br><span>(amount)</span>" pattern
+          const amountMatch = item.html.match(/\(([^)]+)\)/i);
+          if (amountMatch) {
+            message = amountMatch[1]; // Store amount as message for display
+            // Also try to extract numeric amount for potential future use
+            const numericMatch = amountMatch[1].match(/[\d.]+/);
+            if (numericMatch) amount = parseFloat(numericMatch[0]);
+          }
+        }
+        else if (htmlLower.includes('gifted') && htmlLower.includes('membership')) eventType = 'gift_membership_purchase';
+        else if (htmlLower.includes('new member') || htmlLower.includes('membership')) eventType = 'membership';
+        else if (htmlLower.includes('milestone')) eventType = 'milestone';
+        else if (htmlLower.includes('subscribed')) eventType = 'subscription';
+      }
+      // TikTok events
+      else if (item.provider === 'tiktok') {
+        if (htmlLower.includes('followed')) eventType = 'follow';
+        else if (htmlLower.includes('sent') && htmlLower.includes('×') && htmlLower.includes('diamonds')) eventType = 'gift';
+        else if (htmlLower.includes('gift sub')) eventType = 'subscription';
+        else if (htmlLower.includes('new sub') || htmlLower.includes('subscribed')) eventType = 'subscription';
+        
+        // For TikTok gifts, extract additional data
+        if (eventType === 'gift') {
+          // Extract gift count from "sent 5× GiftName" pattern
+          const countMatch = item.html.match(/sent (\d+)×/);
+          if (countMatch) amount = parseInt(countMatch[1]);
+          
+          // Extract gift name from "sent 5× GiftName" pattern
+          const nameMatch = item.html.match(/sent \d+×\s*([^<]+)/);
+          if (nameMatch) {
+            message = nameMatch[1].trim();
+          }
+        }
+      }
+      
+      // Extract message if present (but don't override TikTok gift data)
+      if (item.html.includes(':') && eventType !== 'gift') {
+        const parts = item.html.split(':');
+        if (parts.length > 1) {
+          message = parts.slice(1).join(':').trim();
+        }
+      }
+      
+      // Build standardized event object
+      const eventData = {
+        platform: item.provider,
+        type: eventType,
+        username: item.name,
+        displayName: item.name,
+        avatar: item.avatar || '',
+        timestamp: new Date().toISOString()
+      };
+      
+      // Add optional fields if present
+      if (amount) eventData.amount = amount;
+      if (message) eventData.message = message;
+      
+      // For TikTok gifts, add gift-specific data
+      if (item.provider === 'tiktok' && eventType === 'gift') {
+        if (item.giftImageUrl) eventData.giftImageUrl = item.giftImageUrl;
+        if (item.giftName) eventData.giftName = item.giftName;
+        if (item.giftCount) eventData.amount = item.giftCount; // Use giftCount as amount
+        if (item.diamondCount) eventData.diamondCount = item.diamondCount;
+        
+        // If we extracted gift name from HTML, also set it as giftName field
+        if (message && !item.giftName) {
+          eventData.giftName = message;
+        }
+        
+        // Also preserve the full HTML as message if no gift name was extracted
+        if (!message) {
+          eventData.message = item.html;
+        }
+      }
+      
+      // For YouTube gift memberships, extract gift count from HTML
+      if (item.provider === 'youtube' && eventType === 'gift_membership_purchase') {
+        // Extract gift count from HTML like "GIFTED 5 MEMBERSHIPS"
+        const giftCountMatch = item.html.match(/GIFTED\s+(\d+)\s+MEMBERSHIP/i);
+        if (giftCountMatch) {
+          eventData.giftCount = parseInt(giftCountMatch[1], 10);
+          console.log(`[Overlay] Extracted giftCount: ${eventData.giftCount} from HTML: ${item.html}`);
+        }
+      }
+      
+      // For Twitch gift subscriptions, extract gift count from HTML
+      if (item.provider === 'twitch' && eventType === 'gift_purchase') {
+        // Extract gift count from HTML like "GIFTED 5 SUBS"
+        const giftCountMatch = item.html.match(/GIFTED\s+(\d+)\s+SUBS/i);
+        if (giftCountMatch) {
+          eventData.giftCount = parseInt(giftCountMatch[1], 10);
+          console.log(`[Overlay] Extracted giftCount: ${eventData.giftCount} from HTML: ${item.html}`);
+        }
+      }
+      
+      // Debug logging for API event formatting
+      console.log(`[Overlay] Sending ${eventData.platform} ${eventData.type} event to API:`, eventData);
+      
+      // Send to main process
+      window.electron.ipcRenderer.send('stream-event', eventData);
+      
+    } catch (error) {
+      console.error('[Overlay] Error sending event to API:', error);
+    }
+  }
+  
   // Function to add an item to the feed
   function addItem(item) {
     const $feed = $('.feed');
@@ -2506,8 +2725,144 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     while ($feed.children('.event-row').length > 30) {
       $feed.children('.event-row').first().remove();
     }
+    
+    // Send event to main process for API storage
+    sendEventToAPI(item);
   }
   
+  // Handle font size updates
+  window.electron.ipcRenderer.on('font-size-update', (event, fontSizes) => {
+    // Clear existing dynamic styles
+    const existingStyles = document.querySelectorAll('style[data-dynamic-font]');
+    existingStyles.forEach(style => style.remove());
+    
+    // Apply overlay event box size
+    if (fontSizes.overlayFontSize) {
+      const style = document.createElement('style');
+      style.setAttribute('data-dynamic-font', 'true');
+      style.textContent = `
+        .item { 
+          min-height: calc(44px * ${fontSizes.overlayFontSize}) !important;
+          padding: calc(0.5em * ${fontSizes.overlayFontSize}) !important;
+        }
+        .item .left-content {
+          font-size: calc(1em * ${fontSizes.overlayFontSize}) !important;
+        }
+        .item .right-content {
+          font-size: calc(1em * ${fontSizes.overlayFontSize}) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Apply stats font size
+    if (fontSizes.statsFontSize) {
+      const style = document.createElement('style');
+      style.setAttribute('data-dynamic-font', 'true');
+      style.textContent = `.stat span { font-size: ${fontSizes.statsFontSize}em !important; }`;
+      document.head.appendChild(style);
+    }
+    
+    console.log('Overlay font sizes updated:', fontSizes);
+  });
+
+  // Handle background color updates from settings
+  window.electron.ipcRenderer.on('background-color-update', (event, backgroundColor) => {
+    console.log('Overlay background color updated to:', backgroundColor);
+    
+    // Remove existing dynamic background color style if present
+    const existingStyle = document.getElementById('dynamic-background-color-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add new background color style
+    const style = document.createElement('style');
+    style.id = 'dynamic-background-color-style';
+    style.textContent = `
+      html, body { 
+        background-color: ${backgroundColor} !important; 
+      }
+      .stats-wrapper {
+        background: ${backgroundColor} !important;
+        border-bottom: 3px solid #8000FF !important;
+        box-shadow: none !important;
+      }
+      .feed-header {
+        background: ${backgroundColor} !important;
+        border-bottom: 1px solid #8000FF !important;
+      }
+      .item {
+        background: ${backgroundColor} !important;
+      }
+    `;
+    document.head.appendChild(style);
+  });
+
+  // Handle events color updates from settings
+  window.electron.ipcRenderer.on('events-color-update', (event, eventsColor) => {
+    console.log('Overlay events color updated to:', eventsColor);
+    
+    // Remove existing dynamic events color style if present
+    const existingStyle = document.getElementById('dynamic-events-color-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add new events color style
+    const style = document.createElement('style');
+    style.id = 'dynamic-events-color-style';
+    style.textContent = `
+      /* Update main text color */
+      html, body { 
+        color: ${eventsColor} !important; 
+      }
+      
+      /* Update stat labels */
+      .stat label { 
+        color: ${eventsColor} !important; 
+      }
+      
+      /* Update stat borders and backgrounds */
+      .stat { 
+        border: 2px solid ${eventsColor} !important; 
+        background: ${eventsColor}1A !important; 
+      }
+      
+      /* Update stats wrapper border */
+      .stats-wrapper {
+        border-bottom: 3px solid ${eventsColor} !important;
+      }
+      
+      /* Update feed header border */
+      .feed-header {
+        border-bottom: 1px solid ${eventsColor} !important;
+      }
+      
+      /* Update item borders */
+      .item {
+        border: 1px solid ${eventsColor} !important;
+      }
+      
+      /* Update provider icon box background */
+      .provider-icon-box {
+        background: ${eventsColor} !important;
+      }
+      
+      /* Update platform icon filter */
+      .platform-icon-inline {
+        filter: drop-shadow(0 0 2px ${eventsColor}) !important;
+      }
+      
+      /* Update button colors */
+      .stat.polling button {
+        color: ${eventsColor} !important;
+        border: 1px solid ${eventsColor} !important;
+      }
+    `;
+    document.head.appendChild(style);
+  });
+
   // Mark initialization as complete
   console.log('[Overlay] Initialization complete - buttons are now active');
   isInitialized = true;
