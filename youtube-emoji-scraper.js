@@ -18,6 +18,11 @@ class YouTubeEmojiScraper {
     this.onEmojiCacheUpdated = null; // Callback for when new emojis are found
     this.onBadgeCacheUpdated = null; // Callback for when new badges are found
     
+    // Jewel gift detection properties
+    this.jewelGiftCache = new Map(); // Gift ID -> gift data to prevent duplicates
+    this.onJewelDetected = null; // Callback for when Jewel gifts are detected
+    this.jewelScrapingInterval = null; // Timer for periodic Jewel detection
+    
     // Ensure cache directories exist
     this.initializeCacheDirectory();
     
@@ -147,7 +152,8 @@ class YouTubeEmojiScraper {
       throw new Error('No YouTube Stream ID configured. Please set it in Settings.');
     }
     
-    const chatUrl = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=youtube.com`;
+    // Use popout format to get full chat with all messages including gifts
+    const chatUrl = `https://www.youtube.com/live_chat?is_popout=1&v=${videoId}`;
     return { videoId, chatUrl };
   }
 
@@ -887,6 +893,280 @@ class YouTubeEmojiScraper {
     this.onBadgeCacheUpdated = callback;
   }
 
+  // Set callback for Jewel gift detection
+  setJewelDetectionCallback(callback) {
+    this.onJewelDetected = callback;
+    console.log('[YouTube Emoji Scraper] Jewel detection callback set');
+  }
+
+  // Start Jewel gift scraping (every 15 seconds)
+  startJewelScraping() {
+    if (this.jewelScrapingInterval) {
+      console.log('[YouTube Emoji Scraper] Jewel scraping already running');
+      return;
+    }
+    
+    console.log('[YouTube Emoji Scraper] Starting Jewel gift scraping (15-second intervals)');
+    
+    // Perform initial scrape
+    this.scrapeJewels();
+    
+    // Set up interval for periodic scraping
+    this.jewelScrapingInterval = setInterval(() => {
+      this.scrapeJewels();
+    }, 15000); // 15 seconds
+  }
+
+  // Stop Jewel gift scraping
+  stopJewelScraping() {
+    if (this.jewelScrapingInterval) {
+      clearInterval(this.jewelScrapingInterval);
+      this.jewelScrapingInterval = null;
+      console.log('[YouTube Emoji Scraper] Stopped Jewel gift scraping');
+    }
+  }
+
+  // Main Jewel gift scraping method
+  async scrapeJewels() {
+    try {
+      // Check if we need to initialize or refresh the scraping window
+      let needsRefresh = false;
+      
+      if (!this.scrapingWindow || this.scrapingWindow.isDestroyed()) {
+        console.log('[YouTube Emoji Scraper] Scraping window not available - initializing...');
+        await this.initializeScrapingWindow();
+        needsRefresh = true;
+      } else {
+        // Check if window is on the correct URL
+        try {
+          const currentUrl = await this.scrapingWindow.webContents.executeJavaScript('window.location.href');
+          const { chatUrl } = await this.getStreamUrl();
+          
+          if (!currentUrl.includes('live_chat') || !currentUrl.includes('youtube.com')) {
+            console.log('[YouTube Emoji Scraper] Window on wrong URL, needs refresh');
+            needsRefresh = true;
+          }
+        } catch (error) {
+          console.log('[YouTube Emoji Scraper] Unable to check current URL, assuming needs refresh');
+          needsRefresh = true;
+        }
+      }
+      
+      // Only load URL if window needs refresh
+      if (needsRefresh) {
+        const { chatUrl } = await this.getStreamUrl();
+        console.log('[YouTube Emoji Scraper] Loading chat URL:', chatUrl);
+        await this.scrapingWindow.loadURL(chatUrl);
+        await this.waitForPageLoad();
+      }
+      
+      console.log('[YouTube Emoji Scraper] Scanning for Jewel gifts...');
+      
+      // First, debug what page we're actually on
+      const debugInfo = await this.scrapingWindow.webContents.executeJavaScript(`
+        ({
+          url: window.location.href,
+          title: document.title,
+          readyState: document.readyState,
+          hasYtLiveChat: !!document.querySelector('yt-live-chat-app'),
+          totalElements: document.querySelectorAll('*').length,
+          giftElements: document.querySelectorAll('yt-gift-message-view-model').length,
+          chatItems: document.querySelectorAll('yt-live-chat-item-list-renderer > *').length
+        })
+      `);
+      
+      console.log('[YouTube Emoji Scraper] Debug info:', debugInfo);
+      
+      // Extract Jewel gift data from DOM
+      const jewelGifts = await this.scrapingWindow.webContents.executeJavaScript(`
+        (async () => {
+          console.log('[Jewel Scraper] Current URL:', window.location.href);
+          console.log('[Jewel Scraper] Page title:', document.title);
+          console.log('[Jewel Scraper] Document ready state:', document.readyState);
+          
+          // Target specific DOM selector for gift messages
+          const giftElements = document.querySelectorAll('yt-gift-message-view-model');
+          console.log('[Jewel Scraper] Found ' + giftElements.length + ' gift message elements');
+          
+          // If no gift elements, let's see what we do have
+          if (giftElements.length === 0) {
+            console.log('[Jewel Scraper] No gift elements found. Checking page structure...');
+            console.log('[Jewel Scraper] Total elements on page:', document.querySelectorAll('*').length);
+            console.log('[Jewel Scraper] Has yt-live-chat-app:', !!document.querySelector('yt-live-chat-app'));
+            console.log('[Jewel Scraper] Chat items found:', document.querySelectorAll('yt-live-chat-item-list-renderer > *').length);
+            
+            // Look for any elements containing "Jewels"
+            const jewelElements = Array.from(document.querySelectorAll('*')).filter(el => 
+              el.textContent && el.textContent.includes('Jewels')
+            );
+            console.log('[Jewel Scraper] Elements containing "Jewels":', jewelElements.length);
+            jewelElements.forEach((el, i) => {
+              console.log('[Jewel Scraper] Jewel element ' + (i + 1) + ':', el.tagName, el.textContent.trim());
+            });
+            
+            return []; // Return empty if no gift elements
+          }
+          
+          const gifts = [];
+          
+          for (let i = 0; i < giftElements.length; i++) {
+            const giftElement = giftElements[i];
+            try {
+              console.log('[Jewel Scraper] Processing gift element ' + (i + 1));
+              
+              // Extract sender name - updated selector for deeper nesting
+              const authorElement = giftElement.querySelector('#author-name span[role="text"] span');
+              const senderName = authorElement ? authorElement.textContent.trim() : 'Unknown';
+              console.log('[Jewel Scraper] Sender name:', senderName);
+              
+              // Extract gift message - updated selector for deeper nesting
+              const messageElement = giftElement.querySelector('#message span[role="text"] span');
+              const giftMessage = messageElement ? messageElement.textContent.trim() : '';
+              console.log('[Jewel Scraper] Gift message:', giftMessage);
+              
+              // Create unique gift ID based on message content (not timestamp)
+              const messageHash = giftMessage.replace(/\\s+/g, '').toLowerCase();
+              const giftId = senderName + '_' + messageHash;
+              
+              // Updated regex pattern to handle both formats:
+              // Format 1: "sent 100 for 2 Jewels" (numeric gifts)
+              // Format 2: "sent Party hat for 20 Jewels" (named gifts)
+              const match = giftMessage.match(/sent\\s+(.+?)\\s+for\\s+([\\d,]+)\\s+Jewels?/i);
+              
+              if (match) {
+                const giftName = match[1].trim(); // Could be number (100) or name (Party hat)
+                const jewelCount = parseInt(match[2].replace(/,/g, '')); // Jewel cost to track
+                console.log('[Jewel Scraper] Parsed - Gift:', giftName, 'Jewels:', jewelCount);
+                
+                // Determine if this is a monetary gift or named gift
+                const isMonetaryGift = /^[\\d,]+$/.test(giftName);
+                const displayGiftName = isMonetaryGift ? \`$\${giftName}\` : giftName;
+                
+                // Get gift icon - handle both SVG and CSS mask formats
+                let iconData = null;
+                
+                // Try SVG first
+                const svgElement = giftElement.querySelector('#icon yt-icon svg');
+                if (svgElement) {
+                  iconData = { type: 'svg', data: svgElement.outerHTML };
+                  console.log('[Jewel Scraper] Found SVG icon');
+                } else {
+                  // Try CSS mask format (like SuzyQ's gift)
+                  const maskElement = giftElement.querySelector('#icon yt-icon .yt-icon-shape div');
+                  if (maskElement) {
+                    const style = maskElement.style;
+                    const maskUrl = style.mask || style.webkitMask;
+                    if (maskUrl && maskUrl.includes('gift')) {
+                      iconData = { 
+                        type: 'mask', 
+                        data: maskUrl,
+                        color: giftElement.querySelector('#icon yt-icon').style.color || 'rgb(255, 0, 0)'
+                      };
+                      console.log('[Jewel Scraper] Found CSS mask icon:', maskUrl);
+                    }
+                  }
+                }
+                
+                // Try to find sender avatar from parent chat elements
+                let senderAvatar = null;
+                
+                // Look in multiple possible parent containers
+                const parentContainers = [
+                  giftElement.closest('yt-live-chat-paid-message-renderer'),
+                  giftElement.closest('yt-live-chat-item-list-renderer'),
+                  giftElement.parentElement,
+                  giftElement.parentElement?.parentElement
+                ];
+                
+                for (const container of parentContainers) {
+                  if (container) {
+                    const avatarImg = container.querySelector('img[id*="img"], img[id*="avatar"], img[src*="photo"]');
+                    if (avatarImg && avatarImg.src) {
+                      senderAvatar = avatarImg.src;
+                      console.log('[Jewel Scraper] Found avatar:', senderAvatar.substring(0, 50) + '...');
+                      break;
+                    }
+                  }
+                }
+                
+                const giftData = {
+                  id: giftId,
+                  senderName: senderName,
+                  giftName: giftName, // Raw gift name/amount
+                  displayGiftName: displayGiftName, // Formatted for display
+                  jewelCount: jewelCount, // The jewel cost (what we track)
+                  isMonetaryGift: isMonetaryGift, // Whether this is a $ amount or named gift
+                  message: giftMessage,
+                  iconData: iconData, // Updated to handle both SVG and mask
+                  senderAvatar: senderAvatar,
+                  timestamp: Date.now()
+                };
+                
+                gifts.push(giftData);
+                
+                console.log('[Jewel Scraper] Successfully processed gift:', {
+                  sender: senderName,
+                  giftName: displayGiftName,
+                  jewels: jewelCount,
+                  type: isMonetaryGift ? 'monetary' : 'named',
+                  hasIcon: !!iconData,
+                  hasAvatar: !!senderAvatar
+                });
+              } else {
+                console.log('[Jewel Scraper] Could not parse gift message:', giftMessage);
+                console.log('[Jewel Scraper] Regex test result:', /sent\\s+(.+?)\\s+for\\s+([\\d,]+)\\s+Jewels?/i.test(giftMessage));
+              }
+            } catch (error) {
+              console.error('[Jewel Scraper] Error processing gift element ' + (i + 1) + ':', error);
+            }
+          }
+          
+          console.log('[Jewel Scraper] Processing complete. Found ' + gifts.length + ' valid gifts');
+          return gifts;
+        })();
+      `);
+      
+      // Process detected Jewel gifts
+      if (jewelGifts && jewelGifts.length > 0) {
+        console.log(`[YouTube Emoji Scraper] Found ${jewelGifts.length} Jewel gifts`);
+        
+        // Filter out duplicates using cache
+        const newGifts = jewelGifts.filter(gift => !this.jewelGiftCache.has(gift.id));
+        
+        if (newGifts.length > 0) {
+          console.log(`[YouTube Emoji Scraper] ${newGifts.length} new Jewel gifts detected`);
+          
+          // Add to cache
+          newGifts.forEach(gift => {
+            this.jewelGiftCache.set(gift.id, gift);
+          });
+          
+          // Notify callback with new gifts
+          if (this.onJewelDetected) {
+            this.onJewelDetected(newGifts);
+          }
+          
+          // Clean up old entries from cache (keep last 100)
+          if (this.jewelGiftCache.size > 100) {
+            const entries = Array.from(this.jewelGiftCache.entries());
+            const toRemove = entries.slice(0, entries.length - 100);
+            toRemove.forEach(([id]) => this.jewelGiftCache.delete(id));
+          }
+        } else {
+          console.log('[YouTube Emoji Scraper] All gifts were duplicates (already processed)');
+        }
+      } else {
+        console.log('[YouTube Emoji Scraper] No Jewel gifts found in current scan');
+      }
+      
+      return jewelGifts || [];
+      
+    } catch (error) {
+      console.error('[YouTube Emoji Scraper] Jewel scraping failed:', error);
+      return [];
+    }
+  }
+
   // Get cache statistics
   getCacheStats() {
     return {
@@ -963,6 +1243,9 @@ class YouTubeEmojiScraper {
     // Stop all timers
     this.stopPeriodicScraping();
     
+    // Stop Jewel scraping
+    this.stopJewelScraping();
+    
     // Close and destroy scraping window
     if (this.scrapingWindow && !this.scrapingWindow.isDestroyed()) {
       console.log('[YouTube Emoji Scraper] Closing scraping window...');
@@ -971,8 +1254,10 @@ class YouTubeEmojiScraper {
       this.scrapingWindow = null;
     }
     
-    // Clear callback
+    // Clear callbacks
     this.onEmojiCacheUpdated = null;
+    this.onBadgeCacheUpdated = null;
+    this.onJewelDetected = null;
     
     console.log('[YouTube Emoji Scraper] Cleanup complete');
   }

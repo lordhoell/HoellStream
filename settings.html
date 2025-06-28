@@ -332,6 +332,41 @@
   </div>
   -->
   
+  <!-- Platform Visibility Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Platform Visibility</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <p style="color: #ccc; margin: 0 0 15px 0; font-size: 14px;">Hide/show platforms from the stats overlay at the top of the stream.</p>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.tiktok.com/favicon.ico" alt="TikTok" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">TikTok</span>
+        </div>
+        <button id="toggle-tiktok" class="platform-toggle" data-platform="tiktok" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.twitch.tv/favicon.ico" alt="Twitch" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">Twitch</span>
+        </div>
+        <button id="toggle-twitch" class="platform-toggle" data-platform="twitch" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.youtube.com/favicon.ico" alt="YouTube" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">YouTube</span>
+        </div>
+        <button id="toggle-youtube" class="platform-toggle" data-platform="youtube" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Save All Settings Button -->
   <button id="save-all-settings" style="width: 400px; padding: 15px; background: #9146FF; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 20px;">SAVE ALL SETTINGS</button>
   
@@ -402,6 +437,12 @@
         // Set up font size sliders
         setupFontSizeSliders();
         
+        // Load platform visibility settings
+        loadPlatformVisibilitySettings(config);
+        
+        // Set up platform toggle button event listeners
+        setupPlatformToggleListeners();
+        
         // Load saved colors and update preview squares
         try {
           const colors = await window.electron.ipcRenderer.invoke('get-colors');
@@ -444,6 +485,13 @@
         config.OVERLAY_FONT_SIZE = overlayFontSize;
         config.STATS_FONT_SIZE = statsFontSize;
         config.USERNAME_FONT_SIZE = usernameFontSize;
+        
+        // Update platform visibility settings
+        config.PLATFORM_VISIBILITY = {
+          tiktok: getPlatformVisibility('tiktok'),
+          twitch: getPlatformVisibility('twitch'),
+          youtube: getPlatformVisibility('youtube')
+        };
         
         await window.electron.ipcRenderer.invoke('save-config', config);
         
@@ -587,6 +635,18 @@
               avatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iI2ZmMDAwMCIvPjx0ZXh0IHg9IjE2IiB5PSIyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTQiPk08L3RleHQ+PC9zdmc+',
               memberLevelName: 'Member',
               gifted: false
+            }
+          },
+          // YouTube Jewel Gift
+          {
+            type: 'jewel_gift',
+            data: {
+              displayName: 'TestJewelGifter',
+              username: 'testjewelgifter',
+              avatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iI2ZmMDAwMCIvPjx0ZXh0IHg9IjE2IiB5PSIyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTQiPko8L3RleHQ+PC9zdmc+',
+              giftName: '100',
+              jewelCount: 2,
+              message: 'sent 100 for 2 Jewels'
             }
           }
         ]);
@@ -1515,6 +1575,67 @@
       // Redraw canvas and update cursors
       colorPicker.drawColorCanvas();
       colorPicker.updateCursors();
+    }
+    
+    // Platform visibility functions
+    function loadPlatformVisibilitySettings(config) {
+      const visibilitySettings = config.PLATFORM_VISIBILITY || {
+        tiktok: true,
+        twitch: true,
+        youtube: true
+      };
+      
+      // Update button states
+      updatePlatformToggleButton('tiktok', visibilitySettings.tiktok);
+      updatePlatformToggleButton('twitch', visibilitySettings.twitch);
+      updatePlatformToggleButton('youtube', visibilitySettings.youtube);
+    }
+    
+    function updatePlatformToggleButton(platform, isVisible) {
+      const button = document.getElementById(`toggle-${platform}`);
+      if (button) {
+        if (isVisible) {
+          button.textContent = 'SHOW';
+          button.style.background = '#2ed573';
+        } else {
+          button.textContent = 'HIDE';
+          button.style.background = '#e74c3c';
+        }
+      }
+    }
+    
+    function getPlatformVisibility(platform) {
+      const button = document.getElementById(`toggle-${platform}`);
+      return button && button.textContent === 'SHOW';
+    }
+    
+    function togglePlatformVisibility(platform) {
+      const button = document.getElementById(`toggle-${platform}`);
+      if (button) {
+        const currentlyVisible = button.textContent === 'SHOW';
+        const newVisibility = !currentlyVisible;
+        
+        updatePlatformToggleButton(platform, newVisibility);
+        
+        // Send update to overlay immediately via IPC
+        console.log(`Sending platform visibility update: ${platform} = ${newVisibility}`);
+        window.electron.ipcRenderer.send('update-platform-visibility', { platform, visible: newVisibility });
+      }
+    }
+    
+    // Set up platform toggle button event listeners
+    function setupPlatformToggleListeners() {
+      document.getElementById('toggle-tiktok').addEventListener('click', () => {
+        togglePlatformVisibility('tiktok');
+      });
+      
+      document.getElementById('toggle-twitch').addEventListener('click', () => {
+        togglePlatformVisibility('twitch');
+      });
+      
+      document.getElementById('toggle-youtube').addEventListener('click', () => {
+        togglePlatformVisibility('youtube');
+      });
     }
   </script>
 </body>

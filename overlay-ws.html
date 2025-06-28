@@ -107,6 +107,11 @@
     .stat label { color: #B266FF; font-size: clamp(6px, 0.9vw, 14px); margin-bottom: 0.2em; white-space: nowrap; }
     .stat span  { color: #FFF; font-weight: bold; font-size: clamp(8px, 1.4vw, 18px); }
     
+    /* Platform visibility controls */
+    .platform-row.hidden {
+      display: none;
+    }
+    
     /* First stat box in each row connects to platform icon */
     .platform-row .stat:first-of-type {
       border-radius: 6px;
@@ -360,11 +365,62 @@
     .supersticker {
       min-height: 4vw;
     }
+    /* YouTube Jewel Gift Styling - matches TikTok coin gift appearance */
+    .youtube-jewel-gift {
+      min-height: 4vw;
+      background: rgba(255, 34, 34, 0.15) !important; /* Red background like TikTok gifts */
+      border-color: #FF2222 !important; /* Red border matching TikTok */
+    }
+    
+    /* Jewel count styling - yellow like TikTok coins */
+    .youtube-jewel-gift .details span {
+      color: #FFD700 !important; /* Golden yellow for Jewel counts */
+      font-weight: bold !important;
+      text-shadow: 0 0 6px #FFD700, 0 0 2px #fff !important; /* Glow effect like TikTok */
+    }
+    
+    /* Gift icon sizing for Jewel gifts */
+    .youtube-jewel-gift .details svg,
+    .youtube-jewel-gift .details img {
+      width: 24px !important;
+      height: 24px !important;
+      vertical-align: middle !important;
+      margin-right: 8px !important;
+    }
+    
+    /* Enhanced visual polish for Jewel gifts */
+    .youtube-jewel-gift {
+      position: relative !important;
+      overflow: hidden !important;
+    }
+    
+    /* Subtle animation on Jewel gift appearance */
+    .youtube-jewel-gift::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+      transition: left 0.5s ease-in-out;
+    }
+    
+    .youtube-jewel-gift.event-animate::before {
+      left: 100%;
+    }
+    
+    /* Legacy jewel-gift class for backward compatibility */
+    .jewel-gift {
+      min-height: 4vw;
+      background: rgba(255, 34, 34, 0.15) !important;
+      border-color: #FF2222 !important;
+    }
   </style>
 </head>
 <body>
   <div class="stats-wrapper">
-    <div class="platform-row">
+    <div class="platform-row" id="tiktok-platform-row">
       <div class="platform-icon-container">
         <div class="connection-status status-disconnected" id="tiktok-status"></div>
         <img class="platform-icon-inline" src="https://www.tiktok.com/favicon.ico" alt="TikTok" />
@@ -375,7 +431,7 @@
       <div class="stat"><label>Diamonds:</label><span id="tiktokDiamonds">0</span></div>
       <div class="stat"><label>Likes:</label><span id="tiktokLikes">0</span></div>
     </div>
-    <div class="platform-row">
+    <div class="platform-row" id="twitch-platform-row">
       <div class="platform-icon-container clickable twitch-icon">
         <div class="connection-status status-disconnected" id="twitch-status"></div>
         <img class="platform-icon-inline" src="https://www.twitch.tv/favicon.ico" alt="Twitch" />
@@ -386,7 +442,7 @@
       <div class="stat"><label>Bits:</label><span id="twitchBits">0</span></div>
       <div class="stat"><label>Raids:</label><span id="twitchRaids">0</span></div>
     </div>
-    <div class="platform-row">
+    <div class="platform-row" id="youtube-platform-row">
       <div class="platform-icon-container clickable youtube-icon">
         <div class="connection-status status-disconnected" id="youtube-status"></div>
         <img class="platform-icon-inline" src="https://www.youtube.com/favicon.ico" alt="YouTube" />
@@ -394,11 +450,8 @@
       <div class="stat"><label>Viewers:</label><span id="ytViewers">–</span></div>
       <div class="stat"><label>Subscribers:</label><span id="ytSubscribers">0</span></div>
       <div class="stat"><label>Members:</label><span id="ytMembers">0</span></div>
-      <div class="stat"><label>SuperChats:</label><span id="ytSuperchats">0</span></div>
-      <div class="stat polling">
-        <button id="ytPollBtn" style="display: none;">Start YouTube</button>
-        <button id="ytStopBtn" style="display: none;">Stop YouTube</button>
-      </div>
+      <div class="stat"><label>SuperChats:</label><span id="ytSuperChats">0</span></div>
+      <div class="stat"><label>Jewels:</label><span id="ytJewels">0</span></div>
     </div>
   </div>
   <div class="feed-header">Stream Events</div>
@@ -437,6 +490,11 @@
       style.setAttribute('data-dynamic-font', 'true');
       style.textContent = `.stat span { font-size: ${CONFIG.STATS_FONT_SIZE}em !important; }`;
       document.head.appendChild(style);
+    }
+    
+    // Apply platform visibility settings
+    if (CONFIG.PLATFORM_VISIBILITY) {
+      updatePlatformVisibility(CONFIG.PLATFORM_VISIBILITY);
     }
   }
 
@@ -612,16 +670,7 @@
     }
   }
 
-  // Update existing button handlers to sync with icon state
-  document.getElementById('ytPollBtn').addEventListener('click', async () => {
-    if (youtubeServiceLoading || youtubeServiceRunning) return;
-    await startYouTubeService();
-  });
-
-  document.getElementById('ytStopBtn').addEventListener('click', async () => {
-    if (youtubeServiceLoading || !youtubeServiceRunning) return;
-    await stopYouTubeService();
-  });
+  // Note: YouTube polling buttons removed - functionality moved to clickable favicon
 
   // Only log that overlay is loaded without exposing sensitive config values
   
@@ -659,19 +708,8 @@
   // Stats fetch
   let ytStatsInterval;
 
-  document.getElementById('ytPollBtn').addEventListener('click', () => {
-    if (ytStatsInterval) return;  // only start once
-    // ytStatsInterval replaced with individual polling for Twitch and YouTube if needed.
-    // Example: setInterval(fetchYouTubeStats, 60000); // Uncomment if polling is required
-    updateConnectionStatus('youtube', true);
-  });
-  
-  document.getElementById('ytStopBtn').addEventListener('click', () => {
-    if (!ytStatsInterval) return;
-    clearInterval(ytStatsInterval);
-    ytStatsInterval = null;
-    updateConnectionStatus('youtube', false);
-  });
+  // YouTube polling buttons removed - functionality moved to clickable favicon
+  // The YouTube icon container now handles start/stop functionality
 
   
   // Set up the interval for regular updates (every 60 seconds)
@@ -2323,6 +2361,9 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
       case 'subscription':
         html = 'SUBSCRIBED!';
         break;
+      case 'jewel_gift':
+        html = `${eventData.giftName || 'Gift'} Gift<br><span style="font-size:0.7em;color:#FFD700">(${eventData.jewelCount || '0'} jewels)</span>`;
+        break;
       default:
         html = `${eventType.toUpperCase()}`;
         if (eventData.message) {
@@ -2344,6 +2385,8 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
       extraClass = 'gift-membership';
     } else if (eventType === 'superchat' || eventType === 'supersticker') {
       extraClass = 'superchat';
+    } else if (eventType === 'jewel_gift') {
+      extraClass = 'youtube-jewel-gift';
     }
 
     addItem({
@@ -2356,14 +2399,17 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
 
     // Update counters based on event type
     if (eventType === 'superchat' || eventType === 'supersticker') {
-      const currentCount = parseInt(document.getElementById('ytSuperchats').textContent) || 0;
-      document.getElementById('ytSuperchats').textContent = currentCount + 1;
+      ytSC++;
+      document.getElementById('ytSuperChats').textContent = ytSC;
     } else if (eventType === 'sponsor' || eventType === 'milestone' || eventType === 'gift_membership_purchase') {
-      const currentCount = parseInt(document.getElementById('ytMembers').textContent) || 0;
-      document.getElementById('ytMembers').textContent = currentCount + 1;
+      ytM++;
+      document.getElementById('ytMembers').textContent = ytM;
     } else if (eventType === 'subscription') {
-      const currentCount = parseInt(document.getElementById('ytSubscribers').textContent) || 0;
-      document.getElementById('ytSubscribers').textContent = currentCount + 1;
+      ytS++;
+      document.getElementById('ytSubscribers').textContent = ytS;
+    } else if (eventType === 'jewel_gift') {
+      ytJewels += (eventData.jewelCount || 0);
+      document.getElementById('ytJewels').textContent = ytJewels;
     }
   }
 
@@ -2476,6 +2522,12 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     // Update viewer count
     if (data.viewerCount !== undefined) {
       document.getElementById('ytViewers').textContent = data.viewerCount || '–';
+    }
+    
+    // Update total jewels counter if provided
+    if (data.totalJewels !== undefined) {
+      ytJewels = data.totalJewels;
+      document.getElementById('ytJewels').textContent = ytJewels;
     }
 
     // Process new events
@@ -2614,6 +2666,27 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
         else if (htmlLower.includes('new member') || htmlLower.includes('membership')) eventType = 'membership';
         else if (htmlLower.includes('milestone')) eventType = 'milestone';
         else if (htmlLower.includes('subscribed')) eventType = 'subscription';
+        else if (htmlLower.includes('gift')) {
+          eventType = 'jewel_gift';
+          // Extract jewel count from "100 Gift<br><span>(2 jewels)</span>" pattern
+          const jewelMatch = item.html.match(/\((\d+)\s+jewels?\)/);
+          if (jewelMatch) amount = parseInt(jewelMatch[1]);
+          
+          // Extract gift name from "Happy poop Gift<br>" pattern (everything before "Gift")
+          // Updated regex to capture multi-word gift names including spaces
+          let giftNameMatch = item.html.match(/^(.+?)\s+Gift/);
+          if (!giftNameMatch) {
+            // Try without start anchor in case there's whitespace
+            giftNameMatch = item.html.match(/(.+?)\s+Gift/);
+          }
+          if (giftNameMatch) {
+            // Store gift name in a separate variable to avoid conflicts
+            item.extractedGiftName = giftNameMatch[1];
+            console.log(`[Overlay] Extracted gift name: "${giftNameMatch[1]}" from HTML: "${item.html}"`);
+          } else {
+            console.log(`[Overlay] Failed to extract gift name from HTML: "${item.html}"`);
+          }
+        }
       }
       // TikTok events
       else if (item.provider === 'tiktok') {
@@ -2684,6 +2757,31 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
           eventData.giftCount = parseInt(giftCountMatch[1], 10);
           console.log(`[Overlay] Extracted giftCount: ${eventData.giftCount} from HTML: ${item.html}`);
         }
+      }
+      
+      // For YouTube Jewel gifts, add Jewel-specific data
+      if (item.provider === 'youtube' && eventType === 'jewel_gift') {
+        // Ensure amount is properly set as Jewel count
+        if (amount) {
+          eventData.jewelCount = amount;
+          eventData.amount = amount; // Keep amount for API compatibility
+        }
+        
+        // Use extracted gift name from item, or default to "Gift"
+        eventData.giftName = item.extractedGiftName || 'Gift';
+        eventData.giftType = 'jewel_gift';
+        
+        // Create clean raw message from the gift name and jewel count
+        if (eventData.giftName && eventData.jewelCount) {
+          eventData.rawMessage = `sent ${eventData.giftName} for ${eventData.jewelCount} Jewels`;
+        } else {
+          eventData.rawMessage = 'Jewel gift'; // Fallback
+        }
+        
+        // Clear the message field to avoid confusion
+        eventData.message = '';
+        
+        console.log(`[Overlay] Jewel gift event created: ${amount} jewels from ${item.name}, gift: ${eventData.giftName}`);
       }
       
       // For Twitch gift subscriptions, extract gift count from HTML
@@ -2863,11 +2961,55 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     document.head.appendChild(style);
   });
 
+  // Platform visibility functions
+  function updatePlatformVisibility(visibilitySettings) {
+    const platforms = ['tiktok', 'twitch', 'youtube'];
+    
+    platforms.forEach(platform => {
+      const row = document.getElementById(`${platform}-platform-row`);
+      const isVisible = visibilitySettings[platform] !== false; // default to true if undefined
+      
+      if (row) {
+        if (isVisible) {
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
+      }
+    });
+  }
+  
+  // Listen for platform visibility updates from settings
+  window.electron.ipcRenderer.on('update-platform-visibility', (event, data) => {
+    console.log('[Overlay] Received platform visibility update:', data);
+    const platform = data.platform;
+    const visible = data.visible;
+    
+    const row = document.getElementById(`${platform}-platform-row`);
+    if (row) {
+      if (visible) {
+        row.classList.remove('hidden');
+      } else {
+        row.classList.add('hidden');
+      }
+    }
+  });
+
   // Mark initialization as complete
   console.log('[Overlay] Initialization complete - buttons are now active');
   isInitialized = true;
 
 })();
+
+// Counter variables for stats
+let tF = 0; // Twitch followers
+let tS = 0; // Twitch subs
+let tB = 0; // Twitch bits
+let tR = 0; // Twitch raids
+let ytS = 0; // YouTube subscribers
+let ytM = 0; // YouTube members
+let ytSC = 0; // YouTube superchats
+let ytJewels = 0; // YouTube jewels
 </script>
 </body>
 </html>

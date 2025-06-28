@@ -26,12 +26,22 @@ class YouTubeAPIService {
     // Gift membership tracking
     this.giftQueue = new Map(); // Map of gifterChannelId -> { name, avatar, remainingGifts, timestamp }
     
+    // Jewel gift tracking
+    this.totalJewels = 0; // Cumulative Jewel count
+    this.jewelGiftEvents = []; // Array to store recent Jewel gift history
+    this.MAX_JEWEL_HISTORY = 50; // Keep last 50 Jewel gift events
+    
     // YouTube emoji scraper
     this.emojiScraper = new YouTubeEmojiScraper();
     
     // Set up callback for when new emojis are found
     this.emojiScraper.setEmojiCacheUpdateCallback((newEmojiCount) => {
       this.handleEmojiCacheUpdate(newEmojiCount);
+    });
+    
+    // Set up callback for Jewel gift detection
+    this.emojiScraper.setJewelDetectionCallback((jewelGifts) => {
+      this.handleJewelGifts(jewelGifts);
     });
     
     // Polling configuration
@@ -61,6 +71,9 @@ class YouTubeAPIService {
     // Start periodic emoji scraping
     this.emojiScraper.startPeriodicScraping();
     
+    // Start Jewel gift scraping (15-second intervals)
+    this.emojiScraper.startJewelScraping();
+    
     // Start polling immediately
     await this.pollYouTubeData();
     
@@ -86,6 +99,9 @@ class YouTubeAPIService {
     
     // Stop periodic emoji scraping
     this.emojiScraper.stopPeriodicScraping();
+    
+    // Stop Jewel gift scraping
+    this.emojiScraper.stopJewelScraping();
     
     // Cleanup scraping window
     this.emojiScraper.destroy();
@@ -663,7 +679,8 @@ class YouTubeAPIService {
       events: this.events.slice(), // Send copy of current events
       viewerCount: this.viewerCount || 0,
       connectionStatus: this.connectionStatus, // Use actual connection status
-      lastUpdate: new Date().toISOString() // Convert Date to string for IPC serialization
+      lastUpdate: new Date().toISOString(), // Convert Date to string for IPC serialization
+      totalJewels: this.totalJewels
     };
 
     console.log('=== DATA TO BROADCAST ===', JSON.stringify(data, null, 2));
@@ -703,6 +720,14 @@ class YouTubeAPIService {
           console.log(`[YouTube API Service] Sending to window ${win.id}:`, data);
           win.webContents.send('youtube-data-update', data);
           console.log(`[YouTube API Service] Successfully sent to window ${win.id}`);
+          
+          // Also broadcast to OBS chat clients
+          if (global.broadcastToObsChat) {
+            global.broadcastToObsChat({
+              type: 'youtube-data-update',
+              ...data
+            });
+          }
         } catch (error) {
           console.error(`[YouTube API Service] Failed to send to window ${win.id}:`, error);
         }
@@ -743,7 +768,8 @@ class YouTubeAPIService {
       viewerCount: this.viewerCount,
       connectionStatus: this.connectionStatus,
       lastUpdate: this.lastPollTime,
-      isRunning: this.isRunning
+      isRunning: this.isRunning,
+      totalJewels: this.totalJewels
     };
   }
 
@@ -766,6 +792,61 @@ class YouTubeAPIService {
         console.log(`[YouTube API Service] ⚠️ Skipping destroyed/invalid window ${index}`);
       }
     });
+  }
+
+  // Handle Jewel gift detection
+  handleJewelGifts(jewelGifts) {
+    console.log(`[YouTube API Service] 💎 Processing ${jewelGifts.length} Jewel gifts`);
+    
+    const newEvents = [];
+    
+    for (const gift of jewelGifts) {
+      // Add Jewel count to total (NOT the gift name, but the jewel cost)
+      this.totalJewels += gift.jewelCount;
+      console.log(`[YouTube API Service] Added ${gift.jewelCount} jewels from ${gift.senderName} for "${gift.giftName}" gift, total: ${this.totalJewels}`);
+      
+      // Create standardized event object
+      const jewelEvent = {
+        id: gift.id,
+        type: 'jewel_gift',
+        platform: 'youtube',
+        timestamp: new Date(gift.timestamp).toISOString(),
+        author: {
+          name: gift.senderName,
+          channelId: gift.id.split('_')[0], // Extract sender name as pseudo channel ID
+          avatar: gift.senderAvatar || ''
+        },
+        giftName: gift.giftName, // The actual gift name (e.g., "100")
+        jewelCount: gift.jewelCount, // The jewel cost (what we track)
+        giftIcon: gift.iconSvg,
+        rawMessage: gift.message
+      };
+      
+      // Add to events array
+      this.events.push(jewelEvent);
+      newEvents.push(jewelEvent);
+      
+      // Add to Jewel gift history
+      this.jewelGiftEvents.push(jewelEvent);
+      
+      // Keep only recent Jewel gift events
+      if (this.jewelGiftEvents.length > this.MAX_JEWEL_HISTORY) {
+        this.jewelGiftEvents = this.jewelGiftEvents.slice(-this.MAX_JEWEL_HISTORY);
+      }
+    }
+    
+    // Keep only recent events in main events array
+    if (this.events.length > this.MAX_EVENT_HISTORY) {
+      this.events = this.events.slice(-this.MAX_EVENT_HISTORY);
+    }
+    
+    console.log(`[YouTube API Service] Total Jewel gifts in history: ${this.jewelGiftEvents.length}`);
+    console.log(`[YouTube API Service] Total jewels collected: ${this.totalJewels}`);
+    
+    // Broadcast updates if we have new Jewel gifts
+    if (newEvents.length > 0) {
+      this.broadcastUpdates();
+    }
   }
 }
 

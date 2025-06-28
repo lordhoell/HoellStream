@@ -88,6 +88,461 @@ const eventStorage = {
   }
 };
 
+// OBS Chat Dock HTML Generator
+function getObsChatHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HoellStream - OBS Chat Dock</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/obs-chat.css">
+</head>
+<body>
+  <!-- Status bar for connection indicators -->
+  <div class="status-bar">
+    <div class="platform-indicator">
+      <div class="platform-icon-container">
+        <div class="connection-status status-disconnected" id="tiktok-status"></div>
+        <img class="platform-icon-status" src="https://www.tiktok.com/favicon.ico" alt="TikTok">
+      </div>
+    </div>
+    <div class="platform-indicator">
+      <div class="platform-icon-container">
+        <div class="connection-status status-disconnected" id="twitch-status"></div>
+        <img class="platform-icon-status" src="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png" alt="Twitch">
+      </div>
+    </div>
+    <div class="platform-indicator">
+      <div class="platform-icon-container">
+        <div class="connection-status status-disconnected" id="youtube-status"></div>
+        <img class="platform-icon-status" src="https://www.youtube.com/favicon.ico" alt="YouTube">
+      </div>
+    </div>
+  </div>
+
+  <div id="chatFeed" class="chat-feed"></div>
+  
+  <script>
+${getObsChatScript()}
+  </script>
+</body>
+</html>`;
+}
+
+// Browser-compatible replacement for chat.html script (uses Server-Sent Events)
+function getObsChatScript() {
+  // Return a complete, self-contained browser script that doesn't rely on parsing the original
+  return `
+// OBS Chat Browser Script
+console.log('[OBS Chat] Starting browser-compatible chat script...');
+
+const feed = document.getElementById('chatFeed');
+const icons = {
+  tiktok: 'https://www.tiktok.com/favicon.ico',
+  twitch: 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png',
+  youtube: 'https://www.youtube.com/favicon.ico'
+};
+
+// Connection status management
+function updateConnectionStatus(service, isConnected) {
+  const statusElement = document.getElementById(service + '-status');
+  if (statusElement) {
+    if (isConnected) {
+      statusElement.classList.remove('status-disconnected');
+      statusElement.classList.add('status-connected');
+    } else {
+      statusElement.classList.remove('status-connected');
+      statusElement.classList.add('status-disconnected');
+    }
+  }
+  console.log('Updated', service, 'status to:', isConnected ? 'connected' : 'disconnected');
+}
+
+// Chat message handling with deduplication
+const processedMessages = new Set();
+
+function addChat(platform, displayName, message, avatar, timestamp, hasEmotes, badges) {
+  if (!feed) return;
+  
+  // Check if we've seen this exact message recently (within last 2 seconds)
+  const now = Date.now();
+  const cleanMessage = message.replace(/\s+/g, ' ').trim(); // Normalize whitespace
+  const messageKey = platform + '_' + displayName + '_' + cleanMessage;
+  
+  // Clean up old entries first
+  for (let entry of processedMessages) {
+    const [key, timestamp] = entry.split('_TIME_');
+    if ((now - parseInt(timestamp)) > 2000) { // 2 second window
+      processedMessages.delete(entry);
+    }
+  }
+  
+  // Check for recent duplicate
+  for (let entry of processedMessages) {
+    if (entry.startsWith(messageKey + '_TIME_')) {
+      console.log('[OBS Chat] Duplicate message detected, skipping:', platform, displayName, cleanMessage);
+      return;
+    }
+  }
+  
+  // Add this message to processed set
+  processedMessages.add(messageKey + '_TIME_' + now);
+  
+  console.log('[OBS Chat] Adding new chat message from', platform, ':', displayName, message);
+  console.log('[OBS Chat] Avatar URL:', avatar);
+  console.log('[OBS Chat] Badges:', badges);
+  
+  const chatLine = document.createElement('div');
+  chatLine.className = 'chat-line';
+  
+  // Platform icon
+  const platformIcon = document.createElement('img');
+  platformIcon.className = 'platform-icon';
+  platformIcon.src = icons[platform] || icons.twitch;
+  platformIcon.alt = platform;
+  
+  // User avatar - use proper Twitch avatar or fallback
+  const userAvatar = document.createElement('img');
+  userAvatar.className = 'avatar';
+  if (platform === 'twitch' && avatar && (avatar.includes('twitch') || avatar.includes('jtvnw'))) {
+    userAvatar.src = avatar;
+    console.log('[OBS Chat] Using Twitch avatar:', avatar);
+  } else if (platform === 'twitch') {
+    // Use Twitch default avatar if no specific avatar provided
+    userAvatar.src = 'https://static-cdn.jtvnw.net/jtv_user_pictures/default-profile-image-300x300.png';
+    console.log('[OBS Chat] Using default Twitch avatar');
+  } else {
+    userAvatar.src = avatar || icons[platform] || icons.twitch;
+  }
+  userAvatar.alt = displayName;
+  
+  // Username
+  const usernameEl = document.createElement('span');
+  usernameEl.className = 'username';
+  usernameEl.textContent = displayName;
+  
+  // Badges (for Twitch - placed after username)
+  let badgeContainer = null;
+  if (badges && badges.length > 0) {
+    console.log('[OBS Chat] Adding', badges.length, 'badges after username');
+    badgeContainer = document.createElement('span');
+    badgeContainer.className = 'badges';
+    badges.forEach(badge => {
+      if (badge.imageUrl) {
+        const badgeImg = document.createElement('img');
+        badgeImg.className = 'badge';
+        badgeImg.src = badge.imageUrl;
+        badgeImg.alt = badge.title || badge.setId;
+        badgeImg.style.marginLeft = '4px';
+        badgeContainer.appendChild(badgeImg);
+        console.log('[OBS Chat] Added badge:', badge.title, badge.imageUrl);
+      }
+    });
+  }
+  
+  // Message
+  const messageEl = document.createElement('span');
+  messageEl.className = 'message';
+  messageEl.innerHTML = message;
+  
+  // Assemble the chat line in correct order: Icon -> Avatar -> Username -> Badges -> Message
+  chatLine.appendChild(platformIcon);
+  chatLine.appendChild(userAvatar);
+  chatLine.appendChild(usernameEl);
+  if (badgeContainer && badgeContainer.children.length > 0) {
+    chatLine.appendChild(badgeContainer);
+  }
+  chatLine.appendChild(messageEl);
+  
+  feed.appendChild(chatLine);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// YouTube event handling
+function handleYouTubeEvent(type, data) {
+  console.log('Handling YouTube event:', type, data);
+  
+  if (type === 'chat') {
+    addChat('youtube', data.displayName, data.message, data.avatar, data.timestamp, false, []);
+  } else if (type === 'superchat') {
+    const message = data.message ? data.message + ' (' + data.amount + ')' : data.amount;
+    addChat('youtube', data.author.name, '💰 ' + message, data.author.avatar, data.timestamp, false, []);
+  } else if (type === 'sponsor') {
+    addChat('youtube', data.author.name, '⭐ New member!', data.author.avatar, data.timestamp, false, []);
+  } else if (type === 'jewel_gift') {
+    const message = '💎 ' + data.giftName + ' jewels (' + data.jewelCount + ')';
+    addChat('youtube', data.author.name, message, data.author.avatar, data.timestamp, false, []);
+  }
+}
+
+// Twitch badge extraction
+function extractTwitchBadges(data) {
+  if (!data.badgeData || !Array.isArray(data.badgeData)) return [];
+  return data.badgeData.map(badge => ({
+    imageUrl: badge.imageUrl,
+    title: badge.title,
+    setId: badge.setId
+  }));
+}
+
+// Server-Sent Events connection
+console.log('[OBS Chat] Connecting to SSE endpoint...');
+const eventSource = new EventSource('/obs-chat-events');
+
+eventSource.onopen = () => {
+  console.log('[OBS Chat] SSE connection opened');
+};
+
+eventSource.onmessage = (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    console.log('[OBS Chat] Received SSE event:', data.type, data);
+    
+    if (data.type === 'twitch-chat-message') {
+      console.log('[OBS Chat] Processing Twitch message:', data);
+      const { username, message, tags, badgeData, avatar } = data;
+      const displayName = tags['display-name'] || username;
+      const userAvatar = avatar || 'https://static-cdn.jtvnw.net/jtv_user_pictures/default-profile-image-300x300.png';
+      console.log('[OBS Chat] Twitch avatar URL:', userAvatar);
+      const hasEmotes = message.includes('<img');
+      const badges = extractTwitchBadges(data);
+      console.log('[OBS Chat] Twitch badges:', badges);
+      addChat('twitch', displayName, message, userAvatar, null, hasEmotes, badges);
+    } else if (data.type === 'youtube-data-update') {
+      console.log('[OBS Chat] Processing YouTube update:', data);
+      const updateData = data;
+      
+      // Only process events array (which contains both chat and other events)
+      // Don't process chatMessages separately to avoid duplication
+      if (updateData.events && updateData.events.length > 0) {
+        console.log('[OBS Chat] Processing', updateData.events.length, 'YouTube events');
+        updateData.events.forEach(event => {
+          const mappedEvent = {
+            ...event,
+            avatar: event.author?.avatar || event.avatar || 'https://www.youtube.com/favicon.ico',
+            displayName: event.author?.name || event.displayName || event.username || 'Unknown User'
+          };
+          console.log('[OBS Chat] Processing YouTube event:', event.type, mappedEvent);
+          handleYouTubeEvent(event.type, mappedEvent);
+        });
+      }
+      
+      // Update connection status
+      updateConnectionStatus('youtube', updateData.connectionStatus);
+    } else if (data.type === 'services-status') {
+      updateConnectionStatus('twitch', data.services.twitch);
+      updateConnectionStatus('youtube', data.services.youtube);
+      updateConnectionStatus('tiktok', data.services.tiktok);
+    } else if (data.type === 'twitch-connection-status') {
+      updateConnectionStatus('twitch', data.connectionStatus);
+    } else if (data.type === 'youtube-connection-status') {
+      updateConnectionStatus('youtube', data.connectionStatus);
+    }
+  } catch (error) {
+    console.error('[OBS Chat] Error processing SSE event:', error);
+  }
+};
+
+eventSource.onerror = (error) => {
+  console.error('[OBS Chat] SSE connection error:', error);
+  updateConnectionStatus('twitch', false);
+  updateConnectionStatus('youtube', false);
+  updateConnectionStatus('tiktok', false);
+};
+
+// TikTok WebSocket connection
+console.log('[OBS Chat] Connecting to TikTok WebSocket...');
+try {
+  const tikWs = new WebSocket('ws://localhost:21213/');
+  
+  tikWs.onopen = () => {
+    console.log('[OBS Chat] TikTok WebSocket connected');
+    updateConnectionStatus('tiktok', true);
+  };
+  
+  tikWs.onclose = () => {
+    console.log('[OBS Chat] TikTok WebSocket disconnected');
+    updateConnectionStatus('tiktok', false);
+  };
+  
+  tikWs.onerror = (error) => {
+    console.error('[OBS Chat] TikTok WebSocket error:', error);
+    updateConnectionStatus('tiktok', false);
+  };
+  
+  tikWs.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('[OBS Chat] TikTok message:', data);
+      
+      if (data.event === 'chat' && data.data) {
+        const { comment, uniqueId, nickname, profilePictureUrl } = data.data;
+        addChat('tiktok', nickname || uniqueId, comment, profilePictureUrl, null, false, []);
+      } else if (data.event === 'gift' && data.data) {
+        const { giftName, diamond_count, uniqueId, nickname, profilePictureUrl } = data.data;
+        const message = '🎁 ' + giftName + (diamond_count ? ' (' + diamond_count + ' diamonds)' : '');
+        addChat('tiktok', nickname || uniqueId, message, profilePictureUrl, null, false, []);
+      }
+    } catch (error) {
+      console.error('[OBS Chat] Error processing TikTok message:', error);
+    }
+  };
+} catch (err) {
+  console.error('[OBS Chat] Failed to connect to TikTok WebSocket:', err);
+  updateConnectionStatus('tiktok', false);
+}
+
+console.log('[OBS Chat] Script initialization complete');
+`;
+}
+
+// Default OBS Chat CSS
+function getDefaultObsChatCss() {
+  return `body { 
+  margin: 0; 
+  padding: 0; 
+  background: #000; 
+  color: #fff; 
+  font-family: sans-serif; 
+}
+
+.chat-feed { 
+  height: 100vh; 
+  overflow-y: auto; 
+  padding: 10px; 
+  box-sizing: border-box; 
+  font-size: 25px; 
+  padding-top: 40px;
+}
+
+.chat-line { 
+  display: flex; 
+  align-items: center; 
+  margin-bottom: 16px; 
+}
+
+.platform-icon, .avatar { 
+  width: 28px; 
+  height: 28px; 
+  border-radius: 50%; 
+  flex-shrink: 0; 
+}
+
+.platform-icon { 
+  margin-right: 12px; 
+}
+
+.avatar { 
+  margin-right: 10px; 
+}
+
+.username { 
+  font-weight: bold; 
+  color: #c47cff; 
+  margin-right: 8px; 
+}
+
+.message { 
+  flex: 1; 
+  color: #fff; 
+  word-break: break-word; 
+}
+
+.gift-icon, .emote { 
+  vertical-align: middle; 
+  max-height: 28px; 
+}
+
+.gift-icon {
+  height: 20px;
+  margin: 0 4px;
+}
+
+.emote {
+  height: 24px;
+  margin: 0 2px;
+  display: inline-block;
+}
+
+/* Connection status indicators */
+.status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  background: rgba(0,0,0,0.8);
+  padding: 5px;
+  z-index: 100;
+}
+
+.platform-indicator {
+  position: relative;
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.platform-icon-container {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.platform-icon-status {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 2;
+  margin: 0;
+}
+
+.connection-status {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+}
+
+.status-connected {
+  background-color: rgba(0, 255, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.status-disconnected {
+  background-color: rgba(255, 0, 0, 0.3);
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+}
+
+/* Badge styling */
+.badge {
+  font-size: 20px;
+  height: 24px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.badge img {
+  height: 24px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.badges {
+  margin-left: 0;
+}`;
+}
+
 // Helper functions to get paths (lazy-loaded)
 function getConfigPath() {
   if (!app || !app.getPath) {
@@ -434,6 +889,81 @@ app.whenReady().then(() => {
     }
   });
   
+  // Serve OBS chat dock page (modified chat.html)
+  apiApp.get('/obs-chat', (req, res) => {
+    // Always use our custom HTML with the clean script
+    res.send(getObsChatHtml());
+  });
+  
+  // Serve OBS chat CSS separately for customization
+  apiApp.get('/obs-chat.css', (req, res) => {
+    const cssPath = path.join(__dirname, 'obs-chat.css');
+    if (fs.existsSync(cssPath)) {
+      res.type('text/css').sendFile(cssPath);
+    } else {
+      // Return default CSS if file doesn't exist
+      res.type('text/css').send(getDefaultObsChatCss());
+    }
+  });
+  
+  // Serve favicon to prevent 404 errors
+  apiApp.get('/favicon.ico', (req, res) => {
+    const iconPath = path.join(__dirname, 'icon.ico');
+    if (fs.existsSync(iconPath)) {
+      res.sendFile(iconPath);
+    } else {
+      // Return 204 No Content if no favicon
+      res.status(204).end();
+    }
+  });
+  
+  // Server-Sent Events endpoint for OBS chat
+  const obsChatClients = new Set();
+  
+  apiApp.get('/obs-chat-events', (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+    
+    // Add client to set
+    obsChatClients.add(res);
+    console.log(`[SSE] OBS chat client connected. Total clients: ${obsChatClients.size}`);
+    
+    // Send initial status
+    const services = {
+      twitch: twitchService ? twitchService.isRunning : false,
+      youtube: youtubeService ? youtubeService.isRunning : false,
+      tiktok: false // TikTok connects directly via WebSocket
+    };
+    res.write(`data: ${JSON.stringify({type: 'services-status', services})}\n\n`);
+    
+    // Remove client on disconnect
+    req.on('close', () => {
+      obsChatClients.delete(res);
+      console.log(`[SSE] OBS chat client disconnected. Total clients: ${obsChatClients.size}`);
+    });
+  });
+  
+  // Function to broadcast to all OBS chat clients
+  global.broadcastToObsChat = (eventData) => {
+    if (obsChatClients.size === 0) return;
+    
+    console.log(`[SSE] Broadcasting to ${obsChatClients.size} OBS clients:`, eventData.type, eventData);
+    const message = `data: ${JSON.stringify(eventData)}\n\n`;
+    obsChatClients.forEach(client => {
+      try {
+        client.write(message);
+      } catch (error) {
+        // Remove broken connections
+        obsChatClients.delete(client);
+        console.log('[SSE] Removed broken client connection');
+      }
+    });
+  };
+  
   // Error handling middleware
   apiApp.use((err, req, res, next) => {
     console.error('[API] Error:', err);
@@ -568,6 +1098,7 @@ app.whenReady().then(() => {
           click: () => {
             if (overlayWin) overlayWin.webContents.toggleDevTools();
             if (chatWin)    chatWin.webContents.toggleDevTools();
+            if (settingsWin) settingsWin.webContents.toggleDevTools();
           }
         },
         {
@@ -1552,6 +2083,97 @@ ipcMain.handle('youtube-emoji-clear-cache', async () => {
   }
 });
 
+// YouTube Jewel scraping IPC handlers
+ipcMain.handle('youtube-start-jewel-scraping', async () => {
+  try {
+    // Verify YouTube service is available
+    if (!youtubeService) {
+      return { 
+        success: false, 
+        error: 'YouTube service not initialized. Please start YouTube service first.' 
+      };
+    }
+    
+    // Check if YouTube service is running
+    if (!youtubeService.isRunning) {
+      return { 
+        success: false, 
+        error: 'YouTube service is not running. Please start YouTube service first.' 
+      };
+    }
+    
+    // Start Jewel scraping
+    youtubeService.emojiScraper.startJewelScraping();
+    
+    return { 
+      success: true, 
+      message: 'Jewel scraping started successfully' 
+    };
+  } catch (error) {
+    console.error('[Main] Failed to start Jewel scraping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('youtube-stop-jewel-scraping', async () => {
+  try {
+    // Verify YouTube service is available
+    if (!youtubeService) {
+      return { 
+        success: false, 
+        error: 'YouTube service not initialized' 
+      };
+    }
+    
+    // Stop Jewel scraping
+    youtubeService.emojiScraper.stopJewelScraping();
+    
+    return { 
+      success: true, 
+      message: 'Jewel scraping stopped successfully' 
+    };
+  } catch (error) {
+    console.error('[Main] Failed to stop Jewel scraping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('youtube-get-jewel-stats', async () => {
+  try {
+    // Verify YouTube service is available
+    if (!youtubeService) {
+      return { 
+        totalJewels: 0, 
+        jewelEventCount: 0, 
+        isScrapingActive: false,
+        error: 'YouTube service not initialized' 
+      };
+    }
+    
+    // Get Jewel statistics from the service
+    const serviceData = youtubeService.getCurrentData();
+    const totalJewels = serviceData.totalJewels || 0;
+    const jewelEventCount = youtubeService.jewelGiftEvents ? youtubeService.jewelGiftEvents.length : 0;
+    const isScrapingActive = youtubeService.emojiScraper.jewelScrapingInterval !== null;
+    
+    return { 
+      success: true,
+      totalJewels: totalJewels,
+      jewelEventCount: jewelEventCount,
+      isScrapingActive: isScrapingActive,
+      serviceRunning: youtubeService.isRunning
+    };
+  } catch (error) {
+    console.error('[Main] Failed to get Jewel stats:', error);
+    return { 
+      totalJewels: 0, 
+      jewelEventCount: 0, 
+      isScrapingActive: false,
+      error: error.message 
+    };
+  }
+});
+
 // Handle text color updates from settings and relay to chat window
 ipcMain.on('update-text-color', (event, textColor) => {
   console.log('Relaying text color update to chat window:', textColor);
@@ -1616,6 +2238,16 @@ ipcMain.handle('get-colors', () => {
 ipcMain.on('close-settings', () => {
   if (settingsWin) {
     settingsWin.close();
+  }
+});
+
+// Handle platform visibility updates from settings
+ipcMain.on('update-platform-visibility', (event, data) => {
+  console.log(`[Main] Platform visibility update: ${data.platform} = ${data.visible}`);
+  
+  // Forward to overlay window
+  if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('update-platform-visibility', data);
   }
 });
 

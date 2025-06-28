@@ -558,6 +558,7 @@ class TwitchAPIService {
       username,
       message: parsedText, // Send the actual text content, not the message object
       tags: message.tags,
+      avatar: avatar, // Include the user avatar
       badgeData: this.extractBadgeData(message.tags) // Add badge data
     });
   }
@@ -852,6 +853,14 @@ class TwitchAPIService {
         try {
           win.webContents.send('twitch-chat-message', data);
           console.log(`[Twitch API Service] Sent chat message to window ${win.id}`);
+          
+          // Also broadcast to OBS chat clients
+          if (global.broadcastToObsChat) {
+            global.broadcastToObsChat({
+              type: 'twitch-chat-message',
+              ...data
+            });
+          }
         } catch (error) {
           console.error(`[Twitch API Service] Failed to send chat message to window ${win.id}:`, error);
         }
