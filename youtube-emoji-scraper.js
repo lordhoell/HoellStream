@@ -935,6 +935,12 @@ class YouTubeEmojiScraper {
       if (!this.scrapingWindow || this.scrapingWindow.isDestroyed()) {
         console.log('[YouTube Emoji Scraper] Scraping window not available - initializing...');
         await this.initializeScrapingWindow();
+        
+        // Verify window was created successfully
+        if (!this.scrapingWindow) {
+          throw new Error('Failed to initialize scraping window');
+        }
+        
         needsRefresh = true;
       } else {
         // Check if window is on the correct URL
@@ -1014,13 +1020,13 @@ class YouTubeEmojiScraper {
             try {
               console.log('[Jewel Scraper] Processing gift element ' + (i + 1));
               
-              // Extract sender name - updated selector for deeper nesting
-              const authorElement = giftElement.querySelector('#author-name span[role="text"] span');
+              // Extract sender name - look for the span with role="text" directly
+              const authorElement = giftElement.querySelector('#author-name span[role="text"]');
               const senderName = authorElement ? authorElement.textContent.trim() : 'Unknown';
               console.log('[Jewel Scraper] Sender name:', senderName);
               
-              // Extract gift message - updated selector for deeper nesting
-              const messageElement = giftElement.querySelector('#message span[role="text"] span');
+              // Extract gift message - look for the span with role="text" directly
+              const messageElement = giftElement.querySelector('#message span[role="text"]');
               const giftMessage = messageElement ? messageElement.textContent.trim() : '';
               console.log('[Jewel Scraper] Gift message:', giftMessage);
               
@@ -1045,13 +1051,20 @@ class YouTubeEmojiScraper {
                 // Get gift icon - handle both SVG and CSS mask formats
                 let iconData = null;
                 
-                // Try SVG first
-                const svgElement = giftElement.querySelector('#icon yt-icon svg');
+                // Try SVG first - updated selector to match actual DOM structure
+                const svgElement = giftElement.querySelector('#icon svg');
                 if (svgElement) {
-                  iconData = { type: 'svg', data: svgElement.outerHTML };
-                  console.log('[Jewel Scraper] Found SVG icon');
+                  // Also get the color from the parent yt-icon element
+                  const ytIconElement = giftElement.querySelector('#icon yt-icon');
+                  const iconColor = ytIconElement ? ytIconElement.style.color : 'rgb(255, 0, 0)';
+                  iconData = { 
+                    type: 'svg', 
+                    data: svgElement.outerHTML,
+                    color: iconColor
+                  };
+                  console.log('[Jewel Scraper] Found SVG icon with color:', iconColor);
                 } else {
-                  // Try CSS mask format (like SuzyQ's gift)
+                  // Try CSS mask format (older format)
                   const maskElement = giftElement.querySelector('#icon yt-icon .yt-icon-shape div');
                   if (maskElement) {
                     const style = maskElement.style;
@@ -1235,6 +1248,7 @@ class YouTubeEmojiScraper {
       this.backfillTimer = null;
     }
   }
+
 
   // Cleanup resources
   destroy() {

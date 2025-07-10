@@ -295,7 +295,17 @@
     }
 
     .item.tiktok-item { background: rgba(127,0,255,0.15); }
-    .tiktok-gift-counting { color: #FF2222 !important; font-weight: bold; text-shadow: 0 0 6px #FF2222, 0 0 2px #fff; }
+    .tiktok-gift-counting { 
+      color: #FF2222 !important; 
+      font-weight: bold; 
+      text-shadow: 0 0 6px #FF2222, 0 0 2px #fff; 
+      animation: giftCountPulse 0.8s ease-in-out infinite alternate;
+    }
+    
+    @keyframes giftCountPulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.1); }
+    }
 
     /* Shake and light-up animation for stream events */
     @keyframes shake {
@@ -2151,7 +2161,7 @@
         $('#tiktokLikes').text(d.totalLikeCount);
       } else if (m.event === 'follow') {
         tF++; $('#tiktokFollows').text(tF);
-        addItem({ avatar: d.profilePictureUrl, name: d.uniqueId, html: 'FOLLOWED', provider: 'tiktok' });
+        addItem({ avatar: d.profilePictureUrl, name: d.nickname || d.uniqueId, html: 'FOLLOWED', provider: 'tiktok' });
       } else if (m.event === 'subscribe' || m.event === 'subscription') {
         // Log the full subscription data for debugging
         // Check if this is a gift subscription based on the protobuff data structure
@@ -2177,8 +2187,8 @@
         
         if (isGiftSub || hasExplicitGiftType || isReceiverOnlyGift || hasSubWaveEvent || hasThanksListIndicator) {
           // This is a gift subscription
-          const recv = d.receiverUniqueId || d.uniqueId;
-          const from = d.senderUniqueId || '(unknown sender)';
+          const recv = d.receiverNickname || d.receiverUniqueId || d.nickname || d.uniqueId;
+          const from = d.senderNickname || d.senderUniqueId || '(unknown sender)';
           
           addItem({ 
             avatar: d.senderProfilePictureUrl || d.profilePictureUrl, 
@@ -2190,7 +2200,7 @@
           // Regular subscription
           addItem({ 
             avatar: d.profilePictureUrl, 
-            name: d.uniqueId, 
+            name: d.nickname || d.uniqueId, 
             html: 'NEW SUB', 
             provider: 'tiktok' 
           });
@@ -2198,35 +2208,138 @@
         
         tS++; $('#tiktokSubs').text(tS);
       } else if (m.event === 'gift') {
-        // Only show after stacking is complete for Type 1 gifts
-        if (d.giftType === 1 && !d.repeatEnd) return;
-        
-        const count = d.repeatCount || 1;
-        const totalDiamonds = (d.diamondCount || 0) * count;
-        const icon = d.giftPictureUrl || d.giftImageUrl || '';
+        const giftId = d.giftId;
         const displayName = d.nickname || d.uniqueId || 'Unknown';
+        const giftKey = `${displayName}-${giftId}`;
         
-        // Create a unique ID for each gift to ensure a new entry is created
-        const uniqueGiftId = `${displayName}-${d.giftId}-${Date.now()}`;
-        
-        // Create HTML for the gift
-        const giftHtml = `sent ${count}× ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''}<br><span style='font-size:0.7em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
-        
-        // Always add a new item for each gift
-        addItem({
-          avatar: d.profilePictureUrl || d.avatarUrl, 
-          name: displayName, 
-          html: giftHtml, 
-          provider: 'tiktok',
-          giftImageUrl: icon, // Pass the gift image URL
-          giftName: d.giftName,
-          giftCount: count,
-          diamondCount: totalDiamonds
-        });
-        
-        // Update diamond counter
-        tD += totalDiamonds;
-        $('#tiktokDiamonds').text(tD);
+        // Handle Type 1 gifts (stackable gifts like roses)
+        if (d.giftType === 1) {
+          if (!d.repeatEnd) {
+            // Check if we already have an active gift for this key
+            if (window.activeGifts && window.activeGifts[giftKey]) {
+              // Update the existing gift count
+              const activeGift = window.activeGifts[giftKey];
+              const newCount = d.repeatCount || 1;
+              activeGift.currentCount = newCount;
+              
+              // Update the display immediately
+              const countElement = activeGift.element.find('.tiktok-gift-counting');
+              if (countElement.length > 0) {
+                countElement.text(`${newCount}×`);
+              }
+              return;
+            }
+            
+            // First gift event - start the counting animation
+            const count = d.repeatCount || 1;
+            const icon = d.giftPictureUrl || d.giftImageUrl || '';
+            
+            // Create HTML for the gift without diamond count initially
+            const giftHtml = `sent <span class="tiktok-gift-counting">${count}×</span> ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''}`;
+            
+            // Add the gift item with a unique ID for tracking
+            const giftItem = {
+              avatar: d.profilePictureUrl || d.avatarUrl, 
+              name: displayName, 
+              html: giftHtml, 
+              provider: 'tiktok',
+              giftImageUrl: icon,
+              giftName: d.giftName,
+              giftCount: count,
+              diamondCount: (d.diamondCount || 0) * count,
+              giftKey: giftKey,
+              isAnimating: true
+            };
+            
+            addItem(giftItem);
+            
+            // Store reference to the gift for updates
+            if (!window.activeGifts) window.activeGifts = {};
+            window.activeGifts[giftKey] = {
+              currentCount: count,
+              targetCount: count,
+              diamondCount: d.diamondCount || 0,
+              giftName: d.giftName,
+              icon: icon,
+              element: $('.feed .event-row').last()
+            };
+            
+            return;
+          } else {
+            // Final gift event - complete the counting
+            if (window.activeGifts && window.activeGifts[giftKey]) {
+              const activeGift = window.activeGifts[giftKey];
+              const finalCount = d.repeatCount || 1;
+              const totalDiamonds = (d.diamondCount || 0) * finalCount;
+              
+              // Update the target count
+              activeGift.targetCount = finalCount;
+              
+              // Start counting animation
+              const startCount = activeGift.currentCount;
+              const endCount = finalCount;
+              const duration = Math.min(2000, Math.max(500, (endCount - startCount) * 50)); // 50ms per count, max 2s
+              const startTime = Date.now();
+              
+              const countUp = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const currentCount = Math.floor(startCount + (endCount - startCount) * progress);
+                
+                // Update the count display
+                const countElement = activeGift.element.find('.tiktok-gift-counting');
+                if (countElement.length > 0) {
+                  countElement.text(`${currentCount}×`);
+                }
+                
+                if (progress < 1) {
+                  requestAnimationFrame(countUp);
+                } else {
+                  // Counting complete - show final state
+                  const finalHtml = `sent ${finalCount}× ${activeGift.giftName} ${activeGift.icon ? `<img class="icon" src="${activeGift.icon}">` : ''}<br><span style='font-size:0.7em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
+                  
+                  // Remove pulsing animation and show final state
+                  activeGift.element.find('.details').html(finalHtml);
+                  
+                  // Apply flash animation once
+                  activeGift.element.find('.item').addClass('event-animate flashPulse');
+                  
+                  // Clean up
+                  delete window.activeGifts[giftKey];
+                  
+                  // Update diamond counter
+                  tD += totalDiamonds;
+                  $('#tiktokDiamonds').text(tD);
+                }
+              };
+              
+              countUp();
+            }
+            return;
+          }
+        } else {
+          // Handle non-stackable gifts (Type 0) - show immediately
+          const count = d.repeatCount || 1;
+          const totalDiamonds = (d.diamondCount || 0) * count;
+          const icon = d.giftPictureUrl || d.giftImageUrl || '';
+          
+          const giftHtml = `sent ${count}× ${d.giftName} ${icon ? `<img class="icon" src="${icon}">` : ''}<br><span style='font-size:0.7em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
+          
+          addItem({
+            avatar: d.profilePictureUrl || d.avatarUrl, 
+            name: displayName, 
+            html: giftHtml, 
+            provider: 'tiktok',
+            giftImageUrl: icon,
+            giftName: d.giftName,
+            giftCount: count,
+            diamondCount: totalDiamonds
+          });
+          
+          // Update diamond counter
+          tD += totalDiamonds;
+          $('#tiktokDiamonds').text(tD);
+        }
         
         // Scroll to bottom to show the new gift
         $('.feed').scrollTop($('.feed')[0].scrollHeight);
@@ -2401,8 +2514,13 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     if (eventType === 'superchat' || eventType === 'supersticker') {
       ytSC++;
       document.getElementById('ytSuperChats').textContent = ytSC;
-    } else if (eventType === 'sponsor' || eventType === 'milestone' || eventType === 'gift_membership_purchase') {
+    } else if (eventType === 'sponsor' || eventType === 'milestone') {
       ytM++;
+      document.getElementById('ytMembers').textContent = ytM;
+    } else if (eventType === 'gift_membership_purchase') {
+      // For gift memberships, add the actual gift count
+      const giftCount = eventData.giftCount || 1;
+      ytM += giftCount;
       document.getElementById('ytMembers').textContent = ytM;
     } else if (eventType === 'subscription') {
       ytS++;
@@ -2808,9 +2926,14 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
   // Function to add an item to the feed
   function addItem(item) {
     const $feed = $('.feed');
+    
+    // Don't apply flash animation for gifts that are still animating
+    const shouldAnimate = !item.isAnimating;
+    const animationClasses = shouldAnimate ? 'event-animate flashPulse' : '';
+    
     const $item = $(`<div class="event-row">
       <div class='provider-icon-box'><img src='${item.provider === 'twitch' ? 'https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png' : item.provider === 'youtube' ? 'https://www.youtube.com/favicon.ico' : 'https://www.tiktok.com/favicon.ico'}' alt='${item.provider}'></div>
-      <div class="item ${item.provider}-item ${item.extraClass || ''}">
+      <div class="item ${item.provider}-item ${item.extraClass || ''} ${animationClasses}">
         <img class="avatar" src="${item.avatar}" alt="">
         <div class="username">${item.name}</div>
         <div class="details">${item.html}</div>
@@ -2818,6 +2941,13 @@ console.log(`[Overlay] Event type mapping: ${event.type} -> ${overlayEventType}`
     </div>`);
     $feed.append($item);
     $feed.each(function() { this.scrollTop = this.scrollHeight; });
+    
+    // Remove animation classes after animation completes to allow future animations
+    if (shouldAnimate) {
+      setTimeout(() => {
+        $item.find('.item').removeClass('event-animate flashPulse');
+      }, 1500);
+    }
     
     // Limit to 30 most recent events
     while ($feed.children('.event-row').length > 30) {

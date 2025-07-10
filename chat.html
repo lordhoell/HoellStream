@@ -384,6 +384,33 @@
     return badges;
   }
 
+  // Function to extract Twitch badges from user data
+  function extractTwitchBadges(data) {
+    const badges = [];
+    
+    // Check for broadcaster badge
+    if (data.tags && data.tags.badges && data.tags.badges.includes('broadcaster')) {
+      badges.push('<span class="badge broadcaster-badge" title="Broadcaster">👑</span>');
+    }
+    
+    // Check for moderator badge
+    if (data.tags && data.tags.badges && data.tags.badges.includes('moderator')) {
+      badges.push('<span class="badge mod-badge" title="Moderator">🗡️</span>');
+    }
+    
+    // Check for subscriber badge
+    if (data.tags && data.tags.badges && data.tags.badges.includes('subscriber')) {
+      badges.push('<span class="badge sub-badge" title="Subscriber">⭐</span>');
+    }
+    
+    // Check for VIP badge
+    if (data.tags && data.tags.badges && data.tags.badges.includes('vip')) {
+      badges.push('<span class="badge vip-badge" title="VIP">💎</span>');
+    }
+    
+    return badges;
+  }
+
   // Function to extract YouTube badges from user data
   function extractYouTubeBadges(data) {
     const badges = [];
@@ -534,6 +561,8 @@
   // YouTube Events IPC listener (for all events including chat)
   window.electron.ipcRenderer.on('youtube-data-update', (event, data) => {
     console.log('Received YouTube data update:', data);
+    console.log('YouTube events array:', data?.events);
+    console.log('Number of YouTube events:', data?.events?.length || 0);
     
     // Add detailed emoji debugging for YouTube chat messages
     if (data && data.chatMessages && data.chatMessages.length > 0) {
@@ -553,9 +582,18 @@
     if (data && data.events && data.events.length > 0) {
       data.events.forEach(event => {
         console.log(`🔍 [Chat] Processing YouTube event:`, event);
+        console.log(`🔍 [Chat] Event type: ${event.type}`);
         console.log(`🔍 [Chat] Raw event message field:`, event.message);
         console.log(`🔍 [Chat] Raw event text field:`, event.text);
         console.log(`🔍 [Chat] Event contains HTML:`, event.message && event.message.includes('<'));
+        
+        // Special logging for membership and jewel gift events
+        if (event.type === 'sponsor' || event.type === 'gift_membership_purchase' || event.type === 'gift_membership_received') {
+          console.log(`🎁 [Chat] MEMBERSHIP EVENT DETECTED:`, event.type, event);
+        }
+        if (event.type === 'jewel_gift') {
+          console.log(`💎 [Chat] JEWEL GIFT EVENT DETECTED:`, event.type, event);
+        }
         
         // Map event data with proper avatar and display name fallbacks (like overlay does)
         const mappedEvent = {
@@ -577,23 +615,31 @@
   function handleYouTubeEvent(eventType, eventData) {
     console.log(`🔍 [Chat] handleYouTubeEvent called with type: ${eventType}`, eventData);
     
+    // Special logging for membership and jewel gift events
+    if (eventType === 'sponsor' || eventType === 'gift_membership_purchase' || eventType === 'gift_membership_received') {
+      console.log(`🎁🎁 [Chat] HANDLING MEMBERSHIP EVENT IN handleYouTubeEvent:`, eventType);
+    }
+    if (eventType === 'jewel_gift') {
+      console.log(`💎💎 [Chat] HANDLING JEWEL GIFT EVENT IN handleYouTubeEvent:`, eventType, eventData);
+    }
+    
     // Skip malformed events with undefined/empty content
     if (!eventType || eventType === 'undefined') {
       console.log(`⚠️ [Chat] Ignoring malformed YouTube event with undefined type`);
       return;
     }
     
-    const rawMessage = eventData.message || eventData.text || '';
-    if (!rawMessage || rawMessage === 'undefined') {
-      console.log(`⚠️ [Chat] Ignoring YouTube event with undefined/empty message`);
-      return;
-    }
-    
     let message = '';
+    const rawMessage = eventData.message || eventData.text || '';
     
     switch(eventType) {
       case 'chat':
       case 'textMessageEvent':
+        // For chat messages, skip if empty
+        if (!rawMessage || rawMessage === 'undefined') {
+          console.log(`⚠️ [Chat] Ignoring YouTube chat event with undefined/empty message`);
+          return;
+        }
         // Regular chat message - check for emoji processing
         console.log(`🔍 [Chat] Processing YouTube chat message: "${rawMessage}"`);
         console.log(`🔍 [Chat] Message contains HTML: ${rawMessage.includes('<')}`);
@@ -657,8 +703,21 @@
           message += ` (${eventData.memberLevelName})`;
         }
         break;
+      case 'gift_membership_received':
+        // When someone receives a gifted membership
+        message = `received a gifted membership`;
+        if (eventData.gifter && eventData.gifter !== 'Anonymous Gifter') {
+          message += ` from ${eventData.gifter}`;
+        }
+        if (eventData.memberLevelName) {
+          message += ` (${eventData.memberLevelName})`;
+        }
+        break;
       case 'subscription':
         message = 'subscribed!';
+        break;
+      case 'jewel_gift':
+        message = `💎 ${eventData.giftName} (${eventData.jewelCount} jewels)`;
         break;
       default:
         message = eventData.message || eventData.text || `${eventType}`;
@@ -777,6 +836,20 @@
         // Format: USERNAME: sent AMOUNT× GIFT TITLE GIFT PICTURE (DIAMONDS)
         const giftMsg = `sent ${count}× ${d.giftName} ${giftIcon} <span style='font-size:0.85em;color:#FFD700;'>(${totalDiamonds} diamonds)</span>`;
         addChat('tiktok', displayName, giftMsg, avatar);
+      } else if (m.event === 'follow') {
+        const d = m.data;
+        const avatar = d.profilePictureUrl || icons.tiktok;
+        const displayName = d.nickname || d.uniqueId || 'Unknown';
+        // Format: USERNAME: followed
+        const followMsg = `followed`;
+        addChat('tiktok', displayName, followMsg, avatar, null, false, extractTikTokBadges(d));
+      } else if (m.event === 'subscribe') {
+        const d = m.data;
+        const avatar = d.profilePictureUrl || icons.tiktok;
+        const displayName = d.nickname || d.uniqueId || 'Unknown';
+        // Format: USERNAME: subscribed
+        const subMsg = `subscribed`;
+        addChat('tiktok', displayName, subMsg, avatar, null, false, extractTikTokBadges(d));
       }
     };
   } catch (err) {
@@ -800,6 +873,101 @@
       updateConnectionStatus('twitch', data.connectionStatus);
     }
   });
+
+  // Twitch Events IPC listener (for all events including subscriptions, bits, raids, follows)
+  window.electron.ipcRenderer.on('twitch-data-update', (event, data) => {
+    console.log('Received Twitch data update:', data);
+    
+    // Process all events (subscriptions, raids, follows, etc.)
+    // Skip bits events since they're already shown in chat messages
+    if (data && data.events && data.events.length > 0) {
+      data.events.forEach(event => {
+        console.log(`🔍 [Chat] Processing Twitch event:`, event);
+        // Skip bits/cheer events - they're already displayed in chat messages
+        if (event.type === 'bits' || event.type === 'cheer') {
+          console.log(`🔍 [Chat] Skipping bits event (already shown in chat):`, event);
+          return;
+        }
+        handleTwitchEvent(event.type, event);
+      });
+    }
+    
+    // Update connection status
+    updateConnectionStatus('twitch', data.connectionStatus);
+  });
+
+  // Function to handle Twitch events and display them in chat format
+  function handleTwitchEvent(eventType, eventData) {
+    console.log(`🔍 [Chat] handleTwitchEvent called with type: ${eventType}`, eventData);
+    
+    // Skip malformed events
+    if (!eventType || eventType === 'undefined') {
+      console.log(`⚠️ [Chat] Ignoring malformed Twitch event with undefined type`);
+      return;
+    }
+    
+    let message = '';
+    let displayName = eventData.displayName || eventData.username || 'Unknown';
+    let avatar = eventData.avatar || icons.twitch;
+    
+    switch(eventType) {
+      case 'follow':
+        message = 'followed';
+        break;
+      case 'gift_subscription':
+        // Handle gift subscriptions from Twitch API service
+        displayName = eventData.gifter || eventData.gifterDisplayName || 'Someone';
+        avatar = eventData.gifterAvatar || avatar;
+        const giftRecipient = eventData.username || eventData.displayName || 'someone';
+        message = `gifted a sub to ${giftRecipient}`;
+        if (eventData.tier && eventData.tier !== '1000') {
+          const tierName = eventData.tier.replace('1000', '1').replace('2000', '2').replace('3000', '3');
+          message += ` (Tier ${tierName})`;
+        }
+        break;
+      case 'subscription':
+        if (eventData.isGift) {
+          // For gift subs, show the gifter as the sender
+          displayName = eventData.gifterDisplayName || eventData.gifter || displayName;
+          avatar = eventData.gifterAvatar || avatar;
+          const recipient = eventData.username || eventData.displayName || 'someone';
+          message = `gifted a sub to ${recipient}`;
+          if (eventData.tier && eventData.tier !== '1000') {
+            const tierName = eventData.tier.replace('1000', '1').replace('2000', '2').replace('3000', '3');
+            message += ` (Tier ${tierName})`;
+          }
+        } else {
+          message = 'subscribed';
+          if (eventData.tier && eventData.tier !== '1000') {
+            const tierName = eventData.tier.replace('1000', '1').replace('2000', '2').replace('3000', '3');
+            message += ` (Tier ${tierName})`;
+          }
+          if (eventData.message) {
+            message += `: ${eventData.message}`;
+          }
+        }
+        break;
+      // Commented out to prevent duplicate bits/cheer messages
+      // Bits are already shown in the regular chat messages via twitch-chat-message
+      // case 'bits':
+      // case 'cheer':
+      //   const bitAmount = eventData.bits || eventData.amount || 0;
+      //   message = `cheered ${bitAmount} bits`;
+      //   if (eventData.message) {
+      //     message += `: ${eventData.message}`;
+      //   }
+      //   break;
+      case 'raid':
+        const viewers = eventData.viewers || eventData.viewerCount || 0;
+        message = `raided with ${viewers} viewers`;
+        break;
+      default:
+        message = eventData.message || eventData.text || `${eventType}`;
+    }
+
+    // Add to chat feed
+    addChat('twitch', displayName, message, avatar, null, false, extractTwitchBadges(eventData));
+  }
 
   // Token reload listener for auth refresh
   window.electron.ipcRenderer.on('reload-tokens', async () => {
