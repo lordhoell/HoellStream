@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TikTok WebSocket Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        #status {
+            background: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #events {
+            background: #222;
+            padding: 10px;
+            height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border-radius: 5px;
+        }
+        .connected { color: #4CAF50; }
+        .disconnected { color: #f44336; }
+        .event-header {
+            color: #2196F3;
+            font-weight: bold;
+            margin-top: 10px;
+            border-top: 1px solid #444;
+            padding-top: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { 
+            background: #666; 
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>TikTok WebSocket Event Monitor</h1>
+    <div id="status">Status: <span id="statusText" class="disconnected">Disconnected</span></div>
+    
+    <div>
+        <button id="connectBtn" onclick="connect()">Connect</button>
+        <button id="clearBtn" onclick="clearEvents()">Clear Events</button>
+        <label><input type="checkbox" id="autoScroll" checked> Auto-scroll</label>
+    </div>
+    
+    <h3>Events:</h3>
+    <div id="events"></div>
+
+    <script src="renderer/tiktok-ws-debug.js"></script>
+</body>
+</html>

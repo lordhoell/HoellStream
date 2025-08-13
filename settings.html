@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HoellStream Settings</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .tooltip-container:hover .tooltip-text,
+    .tooltip-container:focus .tooltip-text {
+      visibility: visible;
+    }
+    h1 {
+      margin-bottom: 40px;
+      color: #fff;
+      text-align: center;
+    }
+    #login-twitch:hover {
+      background-color: #7d2df9 !important;
+    }
+    #login-youtube:hover {
+      background-color: #d90000 !important;
+    }
+    #test-font-sizes:hover {
+      background-color: #0088cc !important;
+    }
+    .status {
+      margin-top: 30px;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+      min-height: 20px;
+    }
+    .success {
+      background-color: rgba(0, 128, 0, 0.2);
+      color: #4caf50;
+    }
+    .error {
+      background-color: rgba(255, 0, 0, 0.2);
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1>HoellStream Settings</h1>
+  
+  <!-- Configuration Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 40px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Configuration</h3>
+    
+    <!-- YouTube Live ID -->
+    <div class="field" style="margin-bottom: 25px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Live ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Enter Stream ID here to test offline streams and as a backup
+          </span>
+        </span>
+      </label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="youtube-live-id" style="flex: 1; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+        <button id="select-stream-btn" style="padding: 10px 15px; background: #ff0000; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; white-space: nowrap;">Select Stream</button>
+      </div>
+      <div style="margin-top: 12px;">
+        <label style="display: flex; align-items: center; color: #ccc; font-size: 13px; cursor: pointer;">
+          <input type="checkbox" id="youtube-bypass-selector" style="margin-right: 8px; cursor: pointer;">
+          <span>Use manual Stream ID (bypass stream selector when starting YouTube service)</span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- OAuth Credentials -->
+    <h3 style="color: #fff; margin: 30px 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">OAuth Credentials</h3>
+    
+    <!-- Twitch Credentials -->
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">Twitch Client ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Twitch application's Client ID from dev.twitch.tv
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="twitch-client-id" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="Enter Twitch Client ID">
+        <button type="button" onclick="toggleVisibility('twitch-client-id')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">Twitch Client Secret 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Twitch application's Client Secret from dev.twitch.tv
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="twitch-client-secret" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="Enter Twitch Client Secret">
+        <button type="button" onclick="toggleVisibility('twitch-client-secret')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <!-- YouTube Credentials -->
+    <div class="field" style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Client ID 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Google Cloud Console OAuth 2.0 Client ID for YouTube API
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="youtube-client-id" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="Enter YouTube Client ID">
+        <button type="button" onclick="toggleVisibility('youtube-client-id')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <div class="field" style="margin-bottom: 30px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">YouTube Client Secret 
+        <span class="tooltip-container" style="display: inline-block; position: relative; margin-left: 6px; color: #888; cursor: help;" tabindex="0">❔
+          <span class="tooltip-text" style="visibility: hidden; max-width: 300px; background: #333; color: #fff; text-align: left; padding: 8px; border-radius: 4px; position: absolute; z-index: 10; top: 100%; left: 50%; transform: translateX(-50%); white-space: normal; word-wrap: break-word;">
+            Your Google Cloud Console OAuth 2.0 Client Secret for YouTube API
+          </span>
+        </span>
+      </label>
+      <div style="position: relative;">
+        <input type="password" id="youtube-client-secret" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="Enter YouTube Client Secret">
+        <button type="button" onclick="toggleVisibility('youtube-client-secret')" style="position: absolute; right: 2px; top: 2px; bottom: 2px; background: #444; border: 1px solid #666; color: #ccc; cursor: pointer; font-size: 11px; padding: 0 8px; border-radius: 0 3px 3px 0;">Show</button>
+      </div>
+    </div>
+    
+    <!-- Login Buttons -->
+    <div style="display: flex; gap: 10px; margin: 20px 0;">
+      <button id="login-twitch" style="flex: 1; padding: 12px 20px; background-color: #9146FF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">
+        Log Into Twitch
+      </button>
+      <button id="login-youtube" style="flex: 1; padding: 12px 20px; background-color: #FF0000; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">
+        Log Into YouTube
+      </button>
+    </div>
+  </div>
+  
+  <!-- Font Size Controls Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Font Size Controls</h3>
+    
+    <div style="margin-bottom: 20px;">
+      <p style="color: #ccc; margin: 0 0 15px 0; font-size: 14px;">Adjust font sizes for different display elements.</p>
+    </div>
+    
+    <!-- Chat Font Size -->
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">
+        Chat Font Size: <span id="chat-font-size-display" style="color: #fff;">25px</span>
+      </label>
+      <input type="range" id="chat-font-size" min="12" max="48" value="25" step="1" 
+             style="width: 100%; background: #222; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #888;">
+        <span>12px</span>
+        <span>48px</span>
+      </div>
+    </div>
+    
+    <!-- Chat Username Font Size -->
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">
+        Chat Username Font Size: <span id="username-font-size-display" style="color: #fff;">1.0em</span>
+      </label>
+      <input type="range" id="username-font-size" min="0.8" max="1.5" value="1.0" step="0.1" 
+             style="width: 100%; background: #222; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #888;">
+        <span>0.8em</span>
+        <span>1.5em</span>
+      </div>
+    </div>
+    
+    <!-- Overlay Event Font Size -->
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">
+        Overlay Event Box Size: <span id="overlay-font-size-display" style="color: #fff;">1.0em</span>
+      </label>
+      <input type="range" id="overlay-font-size" min="0.6" max="2.0" value="1.0" step="0.1" 
+             style="width: 100%; background: #222; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #888;">
+        <span>0.6em</span>
+        <span>2.0em</span>
+      </div>
+    </div>
+    
+    <!-- Stats Font Size -->
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #9146FF;">
+        Stats Font Size: <span id="stats-font-size-display" style="color: #fff;">1.2em</span>
+      </label>
+      <input type="range" id="stats-font-size" min="0.8" max="2.0" value="1.2" step="0.1" 
+             style="width: 100%; background: #222; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #888;">
+        <span>0.8em</span>
+        <span>2.0em</span>
+      </div>
+    </div>
+    
+    <!-- Test and Save Font Sizes Buttons -->
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <button id="test-font-sizes" style="flex: 1; padding: 12px 20px; background-color: #00a8ff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">
+        Test
+      </button>
+      <button id="save-font-sizes" style="flex: 1; padding: 12px 20px; background-color: #9146FF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">
+        Save Font Sizes
+      </button>
+    </div>
+  </div>
+  
+  <!-- Color Customization Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Color Customization</h3>
+    
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <button id="change-text-color" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
+        <div style="width: 24px; height: 24px; background-color: #ffffff; border-radius: 4px; border: 1px solid #666;"></div>
+        Change Text Color
+      </button>
+      
+      <button id="change-events-color" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
+        <div style="width: 24px; height: 24px; background-color: #9353ff; border-radius: 4px; border: 1px solid #666;"></div>
+        Change Theme Color
+      </button>
+      
+      <button id="change-background-color" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
+        <div style="width: 24px; height: 24px; background-color: #000000; border-radius: 4px; border: 1px solid #666;"></div>
+        Change Background Color
+      </button>
+    </div>
+  </div>
+  
+  <!-- Color Picker Modal -->
+  <div id="color-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;">
+    <div style="background: #2a2a2a; border-radius: 8px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: white; width: 420px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 18px; font-weight: 500;" id="color-picker-title">Edit colors</h3>
+        <button id="close-color-picker" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;">×</button>
+      </div>
+      
+      <div style="display: flex; gap: 15px;">
+        <!-- Main color canvas -->
+        <div style="position: relative;">
+          <canvas id="colorCanvas" width="280" height="200" style="border-radius: 4px; cursor: crosshair;"></canvas>
+          <div id="colorCursor" style="position: absolute; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); left: 140px; top: 100px;"></div>
+        </div>
+        
+        <!-- Hue slider -->
+        <div style="position: relative;">
+          <canvas id="hueSlider" width="20" height="200" style="border-radius: 4px; cursor: pointer;"></canvas>
+          <div id="hueCursor" style="position: absolute; width: 100%; height: 4px; background: white; pointer-events: none; transform: translateY(-50%); box-shadow: 0 0 0 1px rgba(0,0,0,0.3); top: 100px;"></div>
+        </div>
+        
+        <!-- Color inputs -->
+        <div style="display: flex; flex-direction: column; gap: 15px; min-width: 100px; max-width: 100px;">
+          <div>
+            <input type="text" id="hexInput" value="#000000" maxlength="7" style="width: 100%; padding: 8px; background: #404040; border: 1px solid #555; border-radius: 4px; color: white; font-family: monospace; text-transform: uppercase; font-size: 12px; box-sizing: border-box;">
+          </div>
+          
+          <div id="rgbInputs" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="redInput" min="0" max="255" value="0" style="width: 50px; padding: 4px; background: #404040; border: 1px solid #555; border-radius: 4px; color: white; text-align: center; font-size: 12px;">
+              <label style="font-size: 12px; color: #ccc; min-width: 40px;">Red</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="greenInput" min="0" max="255" value="0" style="width: 50px; padding: 4px; background: #404040; border: 1px solid #555; border-radius: 4px; color: white; text-align: center; font-size: 12px;">
+              <label style="font-size: 12px; color: #ccc; min-width: 40px;">Green</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="blueInput" min="0" max="255" value="0" style="width: 50px; padding: 4px; background: #404040; border: 1px solid #555; border-radius: 4px; color: white; text-align: center; font-size: 12px;">
+              <label style="font-size: 12px; color: #ccc; min-width: 40px;">Blue</label>
+            </div>
+            <div style="margin-top: 8px;">
+              <button id="color-picker-default" style="width: 100%; padding: 6px; background: #555; border: 1px solid #666; border-radius: 4px; color: white; font-size: 12px; cursor: pointer; transition: background 0.2s;">Default</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="color-picker-cancel" style="flex: 1; padding: 10px; background: #555; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
+        <button id="color-picker-apply" style="flex: 1; padding: 10px; background: #9146FF; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Apply</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- YouTube Emoji Management Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px; display: none;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">YouTube Emoji Management</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <p style="color: #ccc; margin: 0 0 10px 0; font-size: 14px;">Scrape and cache YouTube channel emojis for proper display in chat.</p>
+      <div id="emoji-status" style="color: #888; font-size: 12px; margin-bottom: 15px;">Loading emoji cache status...</div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="scrape-emojis" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #00a8ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Scrape Emojis</button>
+      <button id="refresh-emoji-status" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #666; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Refresh Status</button>
+      <button id="clear-emoji-cache" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #ff4757; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Clear Cache</button>
+    </div>
+    
+    <div id="emoji-operation-status" style="margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; display: none;"></div>
+  </div>
+  
+  <!-- Twitch Activity Scraper Test Section - DISABLED due to Twitch browser detection -->
+  <!--
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Twitch Activity Scraper Test</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <p style="color: #ccc; margin: 0 0 10px 0; font-size: 14px;">Test the Twitch Activity Feed scraper (requires authentication).</p>
+      <div id="scraper-status" style="color: #888; font-size: 12px; margin-bottom: 15px;">Scraper Status: Not Started</div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="start-scraper" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #9146FF; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Start Scraper</button>
+      <button id="stop-scraper" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #ff4757; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Stop Scraper</button>
+      <button id="test-scraper" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #00a8ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Get Events</button>
+      <button id="navigate-manually" style="flex: 1; min-width: 120px; padding: 10px 15px; background: #ffa502; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Go to Activity Feed</button>
+    </div>
+    
+    <div id="scraper-events" style="margin-top: 15px; padding: 10px; background: #222; border-radius: 4px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #ccc; display: none;">
+      <div style="color: #fff; margin-bottom: 10px; font-weight: bold;">Latest Events:</div>
+    </div>
+    
+    <div id="scraper-operation-status" style="margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; display: none;"></div>
+  </div>
+  -->
+  
+  <!-- Platform Visibility Section -->
+  <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-top: 20px; width: 400px;">
+    <h3 style="color: #fff; margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px;">Platform Visibility</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <p style="color: #ccc; margin: 0 0 15px 0; font-size: 14px;">Hide/show platforms from the stats overlay at the top of the stream.</p>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.tiktok.com/favicon.ico" alt="TikTok" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">TikTok</span>
+        </div>
+        <button id="toggle-tiktok" class="platform-toggle" data-platform="tiktok" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.twitch.tv/favicon.ico" alt="Twitch" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">Twitch</span>
+        </div>
+        <button id="toggle-twitch" class="platform-toggle" data-platform="twitch" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #222; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="https://www.youtube.com/favicon.ico" alt="YouTube" style="width: 20px; height: 20px;">
+          <span style="color: #fff; font-size: 14px;">YouTube</span>
+        </div>
+        <button id="toggle-youtube" class="platform-toggle" data-platform="youtube" style="padding: 6px 12px; background: #2ed573; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 60px;">SHOW</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save All Settings Button -->
+  <button id="save-all-settings" style="width: 400px; padding: 15px; background: #9146FF; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 20px;">SAVE ALL SETTINGS</button>
+  
+  <div id="status" class="status"></div>
+  
+
+  <!-- YouTube Stream Selector Modal -->
+  <div id="stream-selector-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 8px; width: 600px; max-width: 90%; max-height: 80%; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);">
+      <!-- Modal Header -->
+      <div style="padding: 20px; border-bottom: 1px solid #333;">
+        <h2 style="margin: 0; color: #fff; font-size: 20px;">Select YouTube Stream</h2>
+        <button id="close-stream-modal" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">&times;</button>
+      </div>
+      
+      <!-- Modal Content -->
+      <div style="padding: 20px; overflow-y: auto; flex: 1;">
+        <div id="stream-list-loading" style="text-align: center; color: #999; padding: 40px;">
+          Loading streams...
+        </div>
+        <div id="stream-list-container" style="display: none;">
+          <div id="stream-list"></div>
+        </div>
+        <div id="stream-list-error" style="display: none; text-align: center; color: #f44336; padding: 40px;">
+          Failed to load streams. Please ensure you are authenticated with YouTube.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer/settings.js"></script>
+</body>
+</html>
