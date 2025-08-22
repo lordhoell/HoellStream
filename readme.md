@@ -55,7 +55,11 @@ Enable YouTube Data API v3
 Click hamburger menu > APIs & Services > OAuth Consent Screen
 Click Data Access
 Add or Remove Scopes
-Add the scope .../auth/youtube.readonly
+Add the scopes
+.../auth/youtube.readonly
+.../auth/cloud-translation
+.../auth/youtube
+.../auth/youtube.force-ss
 Click Update
 
 Click hamburger menu > APIs & Services > OAuth Consent Screen
