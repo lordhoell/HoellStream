@@ -16,15 +16,14 @@ Double-click the provided HoellStream.exe to open both Overlay and Chat windows
 Edit configuration
 Open the app menu and select Settings
 Enter your client ID and client Secret for both Twitch and YouTube.
+Click Save.
 Click Log into Twitch
 Click Log into YouTube
+Click Save
 
 
 Reload windows
 Use the "Reload" menu item to refresh both Overlay and Chat windows after saving
-
-***-You will need to load your YouTube Stream ID each stream-***
-
 
 
 HOW TO OBTAIN CLIENT ID AND CLIENT SECRET FROM TWITCH AND YOUTUBE
