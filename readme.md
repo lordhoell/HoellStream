@@ -58,7 +58,7 @@ Add the scopes
 .../auth/youtube.readonly
 .../auth/cloud-translation
 .../auth/youtube
-.../auth/youtube.force-ss
+.../auth/youtube.force-ssl
 Click Update
 
 Click hamburger menu > APIs & Services > OAuth Consent Screen
