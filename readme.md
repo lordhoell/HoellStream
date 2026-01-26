@@ -1,6 +1,7 @@
 HoellStream displays TikTok, Twitch, and YouTube chats and stream events in two separate windows:
-![2025-06-09_21h14_52](https://github.com/user-attachments/assets/d3358506-16a7-46bd-96aa-75e7a886ef9f)
-![2025-06-09_21h14_59](https://github.com/user-attachments/assets/2360c2a6-351b-42d3-be9e-7bdb4781ba13)
+![Stream Events](./images/streamevents.png)
+![Chat](./images/chat.png)
+![Settings](./images/settings.png)
 
 **Overlay:** stream events like follows, subs, bits, superchats, and more  
 **Chat:** unified chat feed from TikTok, Twitch, and YouTube
