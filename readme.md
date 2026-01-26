@@ -7,7 +7,7 @@ HoellStream displays TikTok, Twitch, and YouTube chats and stream events in two 
 **Chat:** unified chat feed from TikTok, Twitch, and YouTube
 
 ## Prerequisites:
-* Tikfinity Desktop App installed for TikTok 
+* EulerStream Account: API Key for TikTok
 * Twitch Dev Console App: Client ID and Client Secret
 * Google Cloud Console App: Client ID and Client Secret
 
@@ -26,6 +26,14 @@ Double-click the provided HoellStream.exe to open both Overlay and Chat windows
 Use the "Reload" menu item to refresh both Overlay and Chat windows after saving
 
 ## How to obtain Client ID and Client Secrets
+
+### TikTok
+* Go to https://www.eulerstream.com/register
+* Create an account
+* Log into your account
+* Navigate to your Dashboard to create an API Key
+* Note down your API Key
+* Enter the API Key in HoellStream Settings
 
 ### Twitch
 * Go to https://dev.twitch.tv/console/apps
